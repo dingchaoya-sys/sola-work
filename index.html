@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOLA WORK｜人材派遣・就職支援</title>
+<style>
+:root{--blue:#0ea5e9;--blue2:#0284c7;--purple:#7c3aed;--bg:#f4f8fb;--card:#fff;--line:#dbe5ee;--text:#0f172a;--muted:#64748b;--green:#16a34a;--red:#dc2626;--amber:#f59e0b}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP","Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+.nav{max-width:1100px;margin:auto;padding:10px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.logo{font-size:20px;font-weight:900;margin-right:auto}.logo span{color:var(--blue)}
+button{border:0;border-radius:10px;padding:10px 14px;background:var(--blue);color:#fff;font-weight:700;cursor:pointer}
+button:hover{opacity:.9}
+button.secondary{background:#e0f2fe;color:#0369a1}
+button.gray{background:#f1f5f9;color:#334155}
+button.purple{background:var(--purple)}
+main{max-width:1100px;margin:22px auto 90px;padding:0 14px}
+.section{display:none}.section.active{display:block}
+.hero{background:linear-gradient(135deg,#0f172a,#0ea5e9);color:#fff;border-radius:20px;padding:36px 24px;margin-bottom:18px}
+.hero.purple{background:linear-gradient(135deg,#312e81,#7c3aed)}
+.hero h1{margin:0 0 10px;font-size:30px;line-height:1.35}.hero p{line-height:1.8;opacity:.9}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 6px 22px rgba(15,23,42,.06);margin-bottom:16px}
+input,select,textarea{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:11px;margin:6px 0 14px;font:inherit}
+textarea{min-height:82px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.job{border:1px solid var(--line);border-radius:14px;background:#fff;padding:16px;margin:12px 0}
+.job.pinned{border:2px solid var(--amber)}
+.badge{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:800;background:#e0f2fe;color:#0369a1;margin-right:5px}
+.badge.green{background:#dcfce7;color:#166534}.badge.red{background:#fee2e2;color:#991b1b}.badge.amber{background:#fef3c7;color:#92400e}.badge.purple{background:#ede9fe;color:#5b21b6}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;font-size:14px;color:#334155;margin:10px 0}.meta b{color:#111827}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.alert{padding:12px;border-radius:10px;margin:10px 0}.ok{background:#dcfce7;color:#166534}.err{background:#fee2e2;color:#991b1b}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}.tabs button{background:#f1f5f9;color:#334155}.tabs button.active{background:var(--blue);color:#fff}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden}th,td{border-bottom:1px solid var(--line);padding:10px;text-align:left;font-size:14px;vertical-align:top}th{background:#f1f5f9}
+.small{font-size:13px;color:var(--muted)}
+.mobile{display:none}
+@media(max-width:720px){.row{grid-template-columns:1fr}.hero h1{font-size:23px}.nav button{font-size:12px;padding:8px 9px}.mobile{display:flex;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);z-index:20;justify-content:space-around;padding:8px}.mobile button{background:none;color:#334155;font-size:12px;padding:5px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="nav">
+    <div class="logo">SOLA <span>WORK</span></div>
+    <button class="secondary" id="btnHome">ホーム</button>
+    <button class="secondary" id="btnDispatch">人材派遣</button>
+    <button class="secondary" id="btnCareer" onclick="showCareerPage()">就職支援</button>
+    <button class="secondary" id="btnLogin">学生ログイン</button>
+    <button class="secondary" id="btnAdminLogin">管理者</button>
+    <button class="gray" id="btnLogout" style="display:none">ログアウト</button>
+  </div>
+</header>
+
+<main>
+<section id="home" class="section active">
+  <div class="hero">
+    <h1>SOLA WORK<br>人材派遣・就職支援プラットフォーム</h1>
+    <p>短期・単発の人材派遣求人と、長期就職支援を分けて管理できます。</p>
+  </div>
+  <div class="grid">
+    <div class="card"><h2>人材派遣ページ</h2><p>毎日の短期求人、募集人数、残り人数を確認し、一键応募できます。</p><button id="goDispatch">人材派遣を見る</button></div>
+    <div class="card"><h2>就職支援ページ</h2><p>長期求人、正社員、特定技能、履歴書、面接、内定管理のページです。</p><button class="purple" id="goCareer" onclick="showCareerPage()">就職支援を見る</button></div>
+  </div>
+</section>
+
+<section id="login" class="section">
+  <div class="card" style="max-width:560px;margin:auto">
+    <h2>学生ログイン・無料登録</h2>
+    <div id="loginMsg"></div>
+    <label>メールアドレス</label><input id="email" type="email" placeholder="example@gmail.com">
+    <label>パスワード</label><input id="pass" type="password" placeholder="英字と数字を含む6文字以上">
+    <p class="small">※ パスワードは6文字以上、英字と数字を含めてください。新規メールの場合は初回登録に進みます。</p>
+    <button id="doLogin">ログイン・新規登録</button>
+  </div>
+</section>
+
+<section id="firstProfile" class="section">
+  <div class="card" style="max-width:680px;margin:auto">
+    <h2>初回登録情報入力</h2>
+    <div class="row">
+      <div><label>氏名</label><input id="fpName"></div>
+      <div><label>電話番号</label><input id="fpTel" placeholder="090-0000-0000"></div>
+    </div>
+    <div class="row">
+      <div><label>学校名</label><input id="fpSchool" value="SOLA学園"></div>
+      <div><label>学科・クラス</label><input id="fpClass"></div>
+    </div>
+    <label>希望職種</label>
+    <select id="fpJob"><option>ホテル</option><option>物流</option><option>飲食</option><option>清掃</option><option>販売</option><option>介護</option><option>IT</option></select>
+    <button id="saveFirst">保存して利用開始</button>
+  </div>
+</section>
+
+<section id="dispatch" class="section">
+  <div class="hero"><h1>人材派遣ページ</h1><p>短期・単発アルバイトの求人一覧です。ログイン後、ワンクリックで応募できます。</p><button id="dispatchLogin">応募するにはログイン</button></div>
+  <div class="card"><h2>本日の派遣求人一覧</h2><div id="dispatchList"></div></div>
+</section>
+
+<section id="career" class="section">
+  <div class="hero purple"><h1>就職支援ページ</h1><p>長期就職・正社員・特定技能・履歴書・面接・内定管理のページです。</p></div>
+  <div class="card"><h2>就職求人一覧</h2><div id="careerList"></div></div>
+</section>
+
+<section id="student" class="section">
+  <div class="card">
+    <h2>学生マイページ</h2><p id="studentInfo" class="small"></p>
+    <div class="tabs">
+      <button class="active" data-stab="sDispatch">派遣求人</button>
+      <button data-stab="sCareer">就職求人</button>
+      <button data-stab="sApps">応募履歴</button>
+      <button data-stab="sProfile">登録情報</button>
+    </div>
+    <div id="sDispatch"><div id="studentDispatchList"></div></div>
+    <div id="sCareer" style="display:none"><div id="studentCareerList"></div></div>
+    <div id="sApps" style="display:none"><div id="studentApps"></div></div>
+    <div id="sProfile" style="display:none">
+      <div class="row"><div><label>メール</label><input id="pEmail" disabled></div><div><label>電話番号</label><input id="pTel"></div></div>
+      <div class="row"><div><label>氏名</label><input id="pName"></div><div><label>学校名</label><input id="pSchool"></div></div>
+      <label>学科・クラス</label><input id="pClass">
+      <button id="saveProfile">保存</button>
+    </div>
+  </div>
+</section>
+
+<section id="adminLogin" class="section">
+  <div class="card" style="max-width:520px;margin:auto">
+    <h2>管理者ログイン</h2><div id="adminMsg"></div>
+    <label>管理者ID</label><input id="adminId">
+    <label>パスワード</label><input id="adminPass" type="password">
+    <button id="doAdminLogin">ログイン</button>
+  </div>
+</section>
+
+<section id="admin" class="section">
+  <div class="card">
+    <h2>管理者画面</h2>
+    <div class="tabs">
+      <button class="active" data-atab="aDispatch">派遣求人管理</button>
+      <button data-atab="aApps">派遣応募一覧</button>
+      <button data-atab="aCareer">就職求人管理</button>
+      <button data-atab="aStudents">学生管理</button>
+      <button data-atab="aAddDispatch">派遣求人追加</button>
+      <button data-atab="aAddCareer">就職求人追加</button>
+    </div>
+    <div id="aDispatch"><div id="adminDispatchList"></div></div>
+    <div id="aApps" style="display:none"><div id="adminApps"></div></div>
+    <div id="aCareer" style="display:none"><div id="adminCareerList"></div></div>
+    <div id="aStudents" style="display:none"><div id="adminStudents"></div></div>
+    <div id="aAddDispatch" style="display:none">
+      <h3>派遣求人追加</h3>
+      <div class="row"><div><label>会社名</label><input id="djCompany"></div><div><label>仕事タイプ</label><input id="djType"></div></div>
+      <label>仕事内容</label><textarea id="djWork"></textarea>
+      <div class="row"><div><label>勤務地</label><input id="djPlace"></div><div><label>勤務時間</label><input id="djTime"></div></div>
+      <div class="row"><div><label>給与</label><input id="djPay"></div><div><label>募集人数</label><input id="djQuota" type="number" value="5"></div></div>
+      <button id="addDispatch">派遣求人を追加</button>
+    </div>
+    <div id="aAddCareer" style="display:none">
+      <h3>就職求人追加</h3>
+      <div class="row"><div><label>会社名</label><input id="cjCompany"></div><div><label>職種</label><input id="cjType"></div></div>
+      <label>仕事内容</label><textarea id="cjWork"></textarea>
+      <div class="row"><div><label>勤務地</label><input id="cjPlace"></div><div><label>雇用形態</label><input id="cjEmp"></div></div>
+      <div class="row"><div><label>給与</label><input id="cjPay"></div><div><label>日本語レベル</label><input id="cjJp"></div></div>
+      <button class="purple" id="addCareer">就職求人を追加</button>
+    </div>
+  </div>
+</section>
+</main>
+
+<div class="mobile">
+  <button id="mHome">ホーム</button><button id="mDispatch">派遣</button><button id="mCareer" onclick="showCareerPage()">就職</button><button id="mStudent">学生</button>
+</div>
+
+<script>
+const ADMIN_ID = 'admin';
+const ADMIN_PASS = '1234';
+let currentUser = null;
+
+function getData(key){ return JSON.parse(localStorage.getItem(key) || '[]'); }
+function setData(key,val){ localStorage.setItem(key, JSON.stringify(val)); }
+function val(id){ return document.getElementById(id).value.trim(); }
+
+function seed(){
+  if(!localStorage.getItem('sw_dispatch_jobs')){
+    setData('sw_dispatch_jobs', [
+      {id:1,pinned:true,active:true,company:'沖縄ホテルサービス',type:'ホテル',work:'客室清掃・ベッドメイキング・備品補充',place:'那覇市国際通り周辺',time:'9:00〜15:00',pay:'時給1,200円',quota:5},
+      {id:2,pinned:false,active:true,company:'宜野湾物流センター',type:'物流',work:'商品の仕分け・梱包・ラベル貼り',place:'宜野湾市',time:'18:00〜22:00',pay:'時給1,300円',quota:3}
+    ]);
+  }
+  if(!localStorage.getItem('sw_career_jobs')){
+    setData('sw_career_jobs', [
+      {id:101,pinned:true,active:true,company:'リゾートホテル沖縄',type:'ホテルフロント',work:'チェックイン対応、予約確認、館内案内',place:'恩納村',emp:'正社員',pay:'月給200,000円〜',jp:'N3以上'},
+      {id:102,pinned:false,active:true,company:'食品製造株式会社',type:'食品製造',work:'製造ライン補助、検品、包装',place:'浦添市',emp:'特定技能',pay:'月給190,000円〜',jp:'N4以上'}
+    ]);
+  }
+  if(!localStorage.getItem('sw_students')) setData('sw_students', []);
+  if(!localStorage.getItem('sw_dispatch_apps')) setData('sw_dispatch_apps', []);
+  if(!localStorage.getItem('sw_career_apps')) setData('sw_career_apps', []);
+}
+
+function show(id){
+  document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});
+  document.getElementById(id).classList.add('active');
+  if(id==='dispatch') renderDispatch();
+  if(id==='career') renderCareer();
+  if(id==='student') renderStudent();
+  if(id==='admin') renderAdmin();
+  window.scrollTo(0,0);
+}
+
+function showMsg(id, text, type){
+  document.getElementById(id).innerHTML = '<div class="alert ' + (type==='err'?'err':'ok') + '">' + text + '</div>';
+}
+
+function passOK(p){ return /^(?=.*[A-Za-z])(?=.*\d).{6,}$/.test(p); }
+
+function remain(job){
+  const apps = getData('sw_dispatch_apps').filter(function(a){return a.jobId===job.id && a.status!=='取消';});
+  return Math.max(0, Number(job.quota) - apps.length);
+}
+
+function dispatchCard(job, mode){
+  const r = remain(job);
+  const full = r <= 0;
+  let html = '<div class="job ' + (job.pinned?'pinned':'') + '">';
+  if(job.pinned) html += '<span class="badge amber">注目</span>';
+  html += '<span class="badge">' + job.type + '</span>';
+  html += full ? '<span class="badge red">満員</span>' : '<span class="badge green">募集中</span>';
+  html += '<h3>' + job.company + '</h3>';
+  html += '<div class="meta">';
+  html += '<div><b>仕事内容</b><br>' + job.work + '</div>';
+  html += '<div><b>勤務地</b><br>' + job.place + '</div>';
+  html += '<div><b>勤務時間</b><br>' + job.time + '</div>';
+  html += '<div><b>給与</b><br>' + job.pay + '</div>';
+  html += '<div><b>募集人数</b><br>' + job.quota + '名</div>';
+  html += '<div><b>残り人数</b><br>' + r + '名</div></div><div class="actions">';
+  if(mode==='public') html += '<button data-action="login">ログインして応募</button>';
+  if(mode==='student') html += '<button data-action="applyDispatch" data-id="' + job.id + '"' + (full?' disabled':'') + '>' + (full?'募集終了':'一键応募') + '</button>';
+  if(mode==='admin'){
+    html += '<button class="secondary" data-action="pinDispatch" data-id="' + job.id + '">' + (job.pinned?'置顶解除':'置顶') + '</button>';
+    html += '<button class="gray" data-action="activeDispatch" data-id="' + job.id + '">' + (job.active?'募集停止':'再開') + '</button>';
+  }
+  html += '</div></div>';
+  return html;
+}
+
+function careerCard(job, mode){
+  let html = '<div class="job ' + (job.pinned?'pinned':'') + '">';
+  if(job.pinned) html += '<span class="badge amber">おすすめ</span>';
+  html += '<span class="badge purple">' + job.emp + '</span><span class="badge">' + job.type + '</span>';
+  html += '<h3>' + job.company + '</h3><div class="meta">';
+  html += '<div><b>仕事内容</b><br>' + job.work + '</div>';
+  html += '<div><b>勤務地</b><br>' + job.place + '</div>';
+  html += '<div><b>給与</b><br>' + job.pay + '</div>';
+  html += '<div><b>日本語</b><br>' + job.jp + '</div></div><div class="actions">';
+  if(mode==='public') html += '<button class="purple" data-action="login">ログインして詳細</button>';
+  if(mode==='student') html += '<button class="purple" data-action="applyCareer" data-id="' + job.id + '">就職応募</button>';
+  if(mode==='admin'){
+    html += '<button class="secondary" data-action="pinCareer" data-id="' + job.id + '">' + (job.pinned?'置顶解除':'置顶') + '</button>';
+    html += '<button class="gray" data-action="activeCareer" data-id="' + job.id + '">' + (job.active?'掲載停止':'再開') + '</button>';
+  }
+  html += '</div></div>';
+  return html;
+}
+
+function renderDispatch(){
+  const jobs = getData('sw_dispatch_jobs').filter(function(j){return j.active;}).sort(function(a,b){return (b.pinned?1:0)-(a.pinned?1:0);});
+  document.getElementById('dispatchList').innerHTML = jobs.map(function(j){return dispatchCard(j,'public');}).join('');
+}
+function renderCareer(){
+  const jobs = getData('sw_career_jobs').filter(function(j){return j.active;}).sort(function(a,b){return (b.pinned?1:0)-(a.pinned?1:0);});
+  document.getElementById('careerList').innerHTML = jobs.map(function(j){return careerCard(j,'public');}).join('');
+}
+
+function studentLogin(){
+  const email = val('email');
+  const pass = val('pass');
+  if(!email || !pass){ showMsg('loginMsg','メールアドレスとパスワードを入力してください。','err'); return; }
+  if(!passOK(pass)){ showMsg('loginMsg','パスワードは6文字以上、英字と数字を含めてください。','err'); return; }
+  let students = getData('sw_students');
+  let s = students.find(function(x){return x.email===email;});
+  if(s && s.pass !== pass){ showMsg('loginMsg','パスワードが違います。','err'); return; }
+  if(!s){
+    currentUser = {id:Date.now(),email:email,pass:pass,name:'',tel:'',school:'',cls:'',createdAt:new Date().toLocaleString()};
+    show('firstProfile');
+    return;
+  }
+  currentUser = s;
+  document.getElementById('btnLogout').style.display = '';
+  show('student');
+}
+
+function saveFirst(){
+  if(!val('fpName') || !val('fpTel')){ alert('氏名と電話番号を入力してください。'); return; }
+  currentUser.name = val('fpName');
+  currentUser.tel = val('fpTel');
+  currentUser.school = val('fpSchool');
+  currentUser.cls = val('fpClass');
+  currentUser.job = val('fpJob');
+  let students = getData('sw_students');
+  students.push(currentUser);
+  setData('sw_students', students);
+  document.getElementById('btnLogout').style.display = '';
+  show('student');
+}
+
+function renderStudent(){
+  if(!currentUser){ show('login'); return; }
+  document.getElementById('studentInfo').textContent = 'ログイン中：' + (currentUser.name || currentUser.email) + ' / ' + (currentUser.tel || '電話未登録');
+  document.getElementById('studentDispatchList').innerHTML = getData('sw_dispatch_jobs').filter(function(j){return j.active;}).sort(function(a,b){return (b.pinned?1:0)-(a.pinned?1:0);}).map(function(j){return dispatchCard(j,'student');}).join('');
+  document.getElementById('studentCareerList').innerHTML = getData('sw_career_jobs').filter(function(j){return j.active;}).sort(function(a,b){return (b.pinned?1:0)-(a.pinned?1:0);}).map(function(j){return careerCard(j,'student');}).join('');
+  document.getElementById('pEmail').value = currentUser.email;
+  document.getElementById('pTel').value = currentUser.tel || '';
+  document.getElementById('pName').value = currentUser.name || '';
+  document.getElementById('pSchool').value = currentUser.school || '';
+  document.getElementById('pClass').value = currentUser.cls || '';
+  const da = getData('sw_dispatch_apps').filter(function(a){return a.studentId===currentUser.id;});
+  const ca = getData('sw_career_apps').filter(function(a){return a.studentId===currentUser.id;});
+  let rows = '';
+  da.forEach(function(a){rows += '<tr><td>派遣</td><td>'+a.date+'</td><td>'+a.company+'</td><td>'+a.type+'</td><td>'+a.status+'</td></tr>';});
+  ca.forEach(function(a){rows += '<tr><td>就職</td><td>'+a.date+'</td><td>'+a.company+'</td><td>'+a.type+'</td><td>'+a.status+'</td></tr>';});
+  document.getElementById('studentApps').innerHTML = rows ? '<table><tr><th>区分</th><th>応募日時</th><th>会社</th><th>仕事</th><th>状態</th></tr>'+rows+'</table>' : '応募履歴はありません。';
+}
+
+function applyDispatch(id){
+  const job = getData('sw_dispatch_jobs').find(function(j){return j.id===id;});
+  if(!job) return;
+  if(remain(job)<=0){ alert('募集終了です。'); return; }
+  let apps = getData('sw_dispatch_apps');
+  if(apps.find(function(a){return a.jobId===id && a.studentId===currentUser.id;})){ alert('すでに応募済みです。'); return; }
+  apps.push({id:Date.now(),jobId:id,studentId:currentUser.id,studentName:currentUser.name,studentEmail:currentUser.email,studentTel:currentUser.tel,company:job.company,type:job.type,status:'応募中',date:new Date().toLocaleString()});
+  setData('sw_dispatch_apps', apps);
+  alert('応募しました。');
+  renderStudent();
+}
+function applyCareer(id){
+  const job = getData('sw_career_jobs').find(function(j){return j.id===id;});
+  let apps = getData('sw_career_apps');
+  if(apps.find(function(a){return a.jobId===id && a.studentId===currentUser.id;})){ alert('すでに応募済みです。'); return; }
+  apps.push({id:Date.now(),jobId:id,studentId:currentUser.id,studentName:currentUser.name,studentEmail:currentUser.email,studentTel:currentUser.tel,company:job.company,type:job.type,status:'応募中',date:new Date().toLocaleString()});
+  setData('sw_career_apps', apps);
+  alert('就職求人に応募しました。');
+  renderStudent();
+}
+function saveProfile(){
+  let students = getData('sw_students');
+  let s = students.find(function(x){return x.id===currentUser.id;});
+  s.tel = val('pTel'); s.name = val('pName'); s.school = val('pSchool'); s.cls = val('pClass');
+  currentUser = s; setData('sw_students', students);
+  alert('保存しました。'); renderStudent();
+}
+function switchStudentTab(id, btn){
+  ['sDispatch','sCareer','sApps','sProfile'].forEach(function(x){document.getElementById(x).style.display='none';});
+  document.getElementById(id).style.display = 'block';
+  btn.parentElement.querySelectorAll('button').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+}
+function adminLogin(){
+  if(val('adminId')===ADMIN_ID && val('adminPass')===ADMIN_PASS){
+    document.getElementById('btnLogout').style.display = '';
+    show('admin');
+  }else{
+    showMsg('adminMsg','管理者情報が違います。','err');
+  }
+}
+function renderAdmin(){
+  document.getElementById('adminDispatchList').innerHTML = getData('sw_dispatch_jobs').map(function(j){return dispatchCard(j,'admin');}).join('');
+  document.getElementById('adminCareerList').innerHTML = getData('sw_career_jobs').map(function(j){return careerCard(j,'admin');}).join('');
+  const apps = getData('sw_dispatch_apps');
+  let appRows = '';
+  apps.forEach(function(a){appRows += '<tr><td>'+a.date+'</td><td>'+a.company+'</td><td>'+a.type+'</td><td>'+a.studentName+'<br>'+a.studentEmail+'</td><td>'+a.studentTel+'</td><td>'+a.status+'</td></tr>';});
+  document.getElementById('adminApps').innerHTML = appRows ? '<table><tr><th>応募日時</th><th>会社</th><th>仕事</th><th>学生</th><th>電話</th><th>状態</th></tr>'+appRows+'</table>' : '派遣応募はまだありません。';
+  const st = getData('sw_students');
+  let stRows = '';
+  st.forEach(function(s){stRows += '<tr><td>'+s.name+'</td><td>'+s.email+'</td><td>'+s.tel+'</td><td>'+(s.school||'')+'</td><td>'+s.createdAt+'</td></tr>';});
+  document.getElementById('adminStudents').innerHTML = stRows ? '<table><tr><th>氏名</th><th>メール</th><th>電話</th><th>学校</th><th>登録日</th></tr>'+stRows+'</table>' : '学生登録はまだありません。';
+}
+function switchAdminTab(id, btn){
+  ['aDispatch','aApps','aCareer','aStudents','aAddDispatch','aAddCareer'].forEach(function(x){document.getElementById(x).style.display='none';});
+  document.getElementById(id).style.display = 'block';
+  btn.parentElement.querySelectorAll('button').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  renderAdmin();
+}
+function addDispatchJob(){
+  let jobs = getData('sw_dispatch_jobs');
+  jobs.push({id:Date.now(),pinned:false,active:true,company:val('djCompany'),type:val('djType'),work:val('djWork'),place:val('djPlace'),time:val('djTime'),pay:val('djPay'),quota:Number(val('djQuota')||0)});
+  setData('sw_dispatch_jobs', jobs);
+  alert('追加しました。'); renderAdmin();
+}
+function addCareerJob(){
+  let jobs = getData('sw_career_jobs');
+  jobs.push({id:Date.now(),pinned:false,active:true,company:val('cjCompany'),type:val('cjType'),work:val('cjWork'),place:val('cjPlace'),emp:val('cjEmp'),pay:val('cjPay'),jp:val('cjJp')});
+  setData('sw_career_jobs', jobs);
+  alert('追加しました。'); renderAdmin();
+}
+function updateJob(key, id, field){
+  let jobs = getData(key);
+  let j = jobs.find(function(x){return x.id===id;});
+  j[field] = !j[field];
+  setData(key, jobs);
+  renderAdmin();
+}
+function logout(){
+  currentUser = null;
+  document.getElementById('btnLogout').style.display = 'none';
+  show('home');
+}
+
+
+function showCareerPage(){
+  show('career');
+  renderCareer();
+}
+
+document.addEventListener('click', function(e){
+  const t = e.target;
+  if(t.id==='btnHome'||t.id==='goHome'||t.id==='mHome') show('home');
+  if(t.id==='btnDispatch'||t.id==='goDispatch'||t.id==='mDispatch') show('dispatch');
+  if(t.id==='btnCareer'||t.id==='goCareer'||t.id==='mCareer') show('career');
+  if(t.id==='btnLogin'||t.id==='mStudent') show(currentUser?'student':'login');
+  if(t.id==='btnAdminLogin') show('adminLogin');
+  if(t.id==='btnLogout') logout();
+  if(t.id==='dispatchLogin') show(currentUser?'student':'login');
+  if(t.id==='doLogin') studentLogin();
+  if(t.id==='saveFirst') saveFirst();
+  if(t.id==='saveProfile') saveProfile();
+  if(t.id==='doAdminLogin') adminLogin();
+  if(t.id==='addDispatch') addDispatchJob();
+  if(t.id==='addCareer') addCareerJob();
+  if(t.dataset.stab) switchStudentTab(t.dataset.stab, t);
+  if(t.dataset.atab) switchAdminTab(t.dataset.atab, t);
+  if(t.dataset.action==='login') show('login');
+  if(t.dataset.action==='applyDispatch') applyDispatch(Number(t.dataset.id));
+  if(t.dataset.action==='applyCareer') applyCareer(Number(t.dataset.id));
+  if(t.dataset.action==='pinDispatch') updateJob('sw_dispatch_jobs', Number(t.dataset.id), 'pinned');
+  if(t.dataset.action==='activeDispatch') updateJob('sw_dispatch_jobs', Number(t.dataset.id), 'active');
+  if(t.dataset.action==='pinCareer') updateJob('sw_career_jobs', Number(t.dataset.id), 'pinned');
+  if(t.dataset.action==='activeCareer') updateJob('sw_career_jobs', Number(t.dataset.id), 'active');
+});
+
+seed();
+renderDispatch();
+renderCareer();
+</script>
+</body>
+</html>
