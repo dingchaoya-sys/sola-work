@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOLA CAREER Auth Test</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",Arial,sans-serif;background:#f8fafc;margin:0;color:#111827}
+header{background:#fff;border-bottom:1px solid #e5e7eb;padding:16px 24px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.logo{font-size:22px;font-weight:900;margin-right:auto}.logo span{color:#32c904}
+button{border:0;background:#32c904;color:#fff;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer}
+button.secondary{background:#e0f2fe;color:#0369a1}button.gray{background:#f1f5f9;color:#334155}
+main{max-width:980px;margin:24px auto;padding:0 14px}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:22px;margin-bottom:16px;box-shadow:0 6px 22px rgba(15,23,42,.06)}
+input{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:10px;margin:6px 0 14px;font:inherit;box-sizing:border-box}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.section{display:none}.section.active{display:block}
+.alert{padding:12px;border-radius:10px;margin:10px 0}.ok{background:#dcfce7;color:#166534}.err{background:#fee2e2;color:#991b1b}.info{background:#e0f2fe;color:#075985}
+.hero{background:linear-gradient(135deg,#ecffe4,#eef7ff);border-radius:22px;padding:34px;margin-bottom:18px}
+.hero h1{font-size:38px;margin:0 0 8px}
+.badge{display:inline-block;border-radius:999px;padding:4px 10px;background:#e0f2fe;color:#0369a1;font-size:12px;font-weight:800;margin-right:6px}
+@media(max-width:720px){.row{grid-template-columns:1fr}.hero h1{font-size:28px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">SOLA <span>CAREER</span> Auth Test</div>
+  <button class="secondary" onclick="show('home')">ホーム</button>
+  <button class="secondary" onclick="show('studentAuth')">学生</button>
+  <button class="secondary" onclick="show('companyAuth')">企業</button>
+  <button class="secondary" onclick="show('adminAuth')">管理者</button>
+  <button class="gray" onclick="logout()">ログアウト</button>
+</header>
+
+<main>
+<section id="home" class="section active">
+  <div class="hero">
+    <h1>SOLA CAREER</h1>
+    <p>Supabase Auth テスト版です。学生・企業・管理者の安全ログインを確認します。</p>
+  </div>
+  <div class="card">
+    <h2>確認内容</h2>
+    <p><span class="badge">学生Auth</span><span class="badge">企業Auth</span><span class="badge">管理者Auth</span></p>
+  </div>
+</section>
+
+<section id="studentAuth" class="section">
+  <div class="card">
+    <h2>学生ログイン / 新規登録</h2>
+    <div id="studentMsg"></div>
+    <div class="row">
+      <div><label>メールアドレス</label><input id="studentEmail" type="email"></div>
+      <div><label>パスワード</label><input id="studentPass" type="password" placeholder="6文字以上"></div>
+    </div>
+    <div class="row">
+      <div><label>氏名</label><input id="studentName"></div>
+      <div><label>電話番号</label><input id="studentTel"></div>
+    </div>
+    <button onclick="signUpStudent()">学生新規登録</button>
+    <button class="secondary" onclick="loginStudent()">学生ログイン</button>
+  </div>
+</section>
+
+<section id="companyAuth" class="section">
+  <div class="card">
+    <h2>企業ログイン / 新規登録</h2>
+    <div id="companyMsg"></div>
+    <div class="row">
+      <div><label>メールアドレス</label><input id="companyEmail" type="email"></div>
+      <div><label>パスワード</label><input id="companyPass" type="password" placeholder="6文字以上"></div>
+    </div>
+    <div class="row">
+      <div><label>会社名</label><input id="companyName"></div>
+      <div><label>電話番号</label><input id="companyTel"></div>
+    </div>
+    <label>担当者名</label><input id="companyPerson">
+    <button onclick="signUpCompany()">企業新規登録</button>
+    <button class="secondary" onclick="loginCompany()">企業ログイン</button>
+    <p>※ 企業は登録後、管理者承認が必要です。</p>
+  </div>
+</section>
+
+<section id="adminAuth" class="section">
+  <div class="card">
+    <h2>管理者ログイン</h2>
+    <div id="adminMsg"></div>
+    <label>メールアドレス</label><input id="adminEmail" type="email" placeholder="admin@sola-career.com">
+    <label>パスワード</label><input id="adminPass" type="password">
+    <button onclick="loginAdmin()">管理者ログイン</button>
+  </div>
+</section>
+
+<section id="dashboard" class="section">
+  <div class="card">
+    <h2 id="dashTitle">マイページ</h2>
+    <p id="dashInfo"></p>
+    <div id="dashContent"></div>
+  </div>
+</section>
+</main>
+
+<script>
+const SUPABASE_URL = 'https://yhwdmlvzzrnvnnxapsfr.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_8ZhlfQc5zqU6xNEFduzymA__aBsJyzf';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function show(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function val(id){return document.getElementById(id).value.trim();}
+function msg(id,text,type='ok'){document.getElementById(id).innerHTML='<div class="alert '+type+'">'+text+'</div>';}
+
+async function createProfile(authUser, role, extra){
+  const payload = {
+    auth_user_id: authUser.id,
+    email: authUser.email,
+    role: role,
+    name: extra.name || '',
+    tel: extra.tel || '',
+    status: role === 'company' ? 'pending' : 'active'
+  };
+
+  const profileRes = await sb.from('user_profiles').insert(payload).select('*').single();
+  if(profileRes.error) throw profileRes.error;
+
+  if(role === 'student'){
+    const studentRes = await sb.from('students').insert({
+      auth_user_id: authUser.id,
+      email: authUser.email,
+      name: extra.name,
+      tel: extra.tel,
+      school: 'SOLA学園'
+    }).select('*').single();
+    if(studentRes.error) throw studentRes.error;
+    await sb.from('user_profiles').update({student_id: studentRes.data.id}).eq('id', profileRes.data.id);
+  }
+
+  if(role === 'company'){
+    const companyRes = await sb.from('companies').insert({
+      auth_user_id: authUser.id,
+      email: authUser.email,
+      company_name: extra.company_name,
+      tel: extra.tel,
+      contact_person: extra.contact_person,
+      status: 'pending'
+    }).select('*').single();
+    if(companyRes.error) throw companyRes.error;
+    await sb.from('user_profiles').update({company_id: companyRes.data.id}).eq('id', profileRes.data.id);
+  }
+
+  return profileRes.data;
+}
+
+async function signUpStudent(){
+  try{
+    msg('studentMsg','登録中です...','info');
+    const email=val('studentEmail'), password=val('studentPass');
+    const res=await sb.auth.signUp({email:email,password:password});
+    if(res.error) throw res.error;
+    await createProfile(res.data.user,'student',{name:val('studentName'),tel:val('studentTel')});
+    msg('studentMsg','学生登録が完了しました。メール確認が必要な場合はメールを確認してください。','ok');
+  }catch(e){msg('studentMsg','登録エラー：'+e.message,'err');}
+}
+
+async function loginStudent(){
+  try{
+    msg('studentMsg','ログイン中です...','info');
+    const res=await sb.auth.signInWithPassword({email:val('studentEmail'),password:val('studentPass')});
+    if(res.error) throw res.error;
+    const p=await sb.from('user_profiles').select('*').eq('auth_user_id',res.data.user.id).eq('role','student').maybeSingle();
+    if(p.error) throw p.error;
+    if(!p.data) throw new Error('学生プロフィールが見つかりません。');
+    showDashboard(p.data);
+  }catch(e){msg('studentMsg','ログインエラー：'+e.message,'err');}
+}
+
+async function signUpCompany(){
+  try{
+    msg('companyMsg','登録中です...','info');
+    const email=val('companyEmail'), password=val('companyPass');
+    const res=await sb.auth.signUp({email:email,password:password});
+    if(res.error) throw res.error;
+    await createProfile(res.data.user,'company',{
+      company_name:val('companyName'),
+      tel:val('companyTel'),
+      contact_person:val('companyPerson'),
+      name:val('companyName')
+    });
+    msg('companyMsg','企業登録申請が完了しました。管理者承認後にログインできます。','ok');
+  }catch(e){msg('companyMsg','登録エラー：'+e.message,'err');}
+}
+
+async function loginCompany(){
+  try{
+    msg('companyMsg','ログイン中です...','info');
+    const res=await sb.auth.signInWithPassword({email:val('companyEmail'),password:val('companyPass')});
+    if(res.error) throw res.error;
+    const p=await sb.from('user_profiles').select('*').eq('auth_user_id',res.data.user.id).eq('role','company').maybeSingle();
+    if(p.error) throw p.error;
+    if(!p.data) throw new Error('企業プロフィールが見つかりません。');
+    if(p.data.status !== 'active' && p.data.status !== 'approved') throw new Error('管理者承認待ちです。');
+    showDashboard(p.data);
+  }catch(e){msg('companyMsg','ログインエラー：'+e.message,'err');}
+}
+
+async function loginAdmin(){
+  try{
+    msg('adminMsg','ログイン中です...','info');
+    const res=await sb.auth.signInWithPassword({email:val('adminEmail'),password:val('adminPass')});
+    if(res.error) throw res.error;
+    let p=await sb.from('user_profiles').select('*').eq('auth_user_id',res.data.user.id).eq('role','admin').maybeSingle();
+    if(p.error) throw p.error;
+
+    if(!p.data && res.data.user.email === 'admin@sola-career.com'){
+      const created=await sb.from('user_profiles').insert({
+        auth_user_id:res.data.user.id,
+        email:res.data.user.email,
+        role:'admin',
+        name:'管理者',
+        status:'active'
+      }).select('*').single();
+      if(created.error) throw created.error;
+      p={data:created.data};
+    }
+
+    if(!p.data) throw new Error('管理者プロフィールが見つかりません。');
+    showDashboard(p.data);
+  }catch(e){msg('adminMsg','ログインエラー：'+e.message,'err');}
+}
+
+function showDashboard(profile){
+  document.getElementById('dashTitle').textContent = profile.role === 'admin' ? '管理者ダッシュボード' : profile.role === 'company' ? '企業マイページ' : '学生マイページ';
+  document.getElementById('dashInfo').textContent = profile.email + ' / role: ' + profile.role + ' / status: ' + profile.status;
+  document.getElementById('dashContent').innerHTML = '<div class="alert ok">Supabase Auth ログイン成功</div><p>このログイン方式では、パスワードは Supabase Auth 側で安全に管理されます。</p>';
+  show('dashboard');
+}
+
+async function logout(){
+  await sb.auth.signOut();
+  show('home');
+}
+</script>
+</body>
+</html>
