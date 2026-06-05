@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOLA CAREER｜Auth正式版</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;background:#fffdf7;color:#111827}
+header{background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 18px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:sticky;top:0}
+.logo{font-size:22px;font-weight:900;margin-right:auto}.logo span{color:#32c904}
+button{border:0;border-radius:10px;background:#32c904;color:#fff;padding:10px 14px;font-weight:800;cursor:pointer}
+button.secondary{background:#e0f2fe;color:#0369a1}
+main{max-width:1100px;margin:24px auto;padding:0 14px}
+.section{display:none}.section.active{display:block}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:22px;margin-bottom:16px}
+.hero{background:linear-gradient(135deg,#ecffe4,#eef7ff);padding:50px 24px;border-radius:28px}
+.hero h1{font-size:48px;margin:0 0 10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.entry{padding:28px;border-radius:22px;color:#fff;cursor:pointer}
+.dispatch{background:linear-gradient(135deg,#34d399,#0ea5e9)}
+.career{background:linear-gradient(135deg,#2563eb,#7c3aed)}
+input{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:10px;margin:6px 0 14px;box-sizing:border-box}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.alert{padding:12px;border-radius:10px;margin:10px 0}
+.ok{background:#dcfce7;color:#166534}
+.err{background:#fee2e2;color:#991b1b}
+.info{background:#e0f2fe;color:#075985}
+.job{border:1px solid #e5e7eb;border-radius:16px;padding:16px;margin:12px 0}
+@media(max-width:760px){.grid,.row{grid-template-columns:1fr}.hero h1{font-size:34px}}
+</style>
+</head>
+<body>
+
+<header>
+<div class="logo">SOLA <span>CAREER</span></div>
+<button class="secondary" onclick="show('home')">ホーム</button>
+<button class="secondary" onclick="show('student')">学生</button>
+<button class="secondary" onclick="show('company')">企業</button>
+<button class="secondary" onclick="show('admin')">管理者</button>
+<button class="secondary" onclick="show('dispatch')">人材派遣</button>
+<button class="secondary" onclick="show('career')">就職支援</button>
+</header>
+
+<main>
+
+<section id="home" class="section active">
+<div class="hero">
+<h1>SOLA CAREER</h1>
+<p>人材派遣・就職支援プラットフォーム</p>
+</div>
+
+<div class="grid" style="margin-top:20px">
+<div class="entry dispatch" onclick="show('dispatch')">
+<h2>人材派遣</h2>
+<p>短期・単発・時間指定の求人</p>
+</div>
+
+<div class="entry career" onclick="show('career')">
+<h2>就職支援</h2>
+<p>正社員・特定技能・長期雇用</p>
+</div>
+</div>
+</section>
+
+<section id="student" class="section">
+<div class="card">
+<h2>学生ログイン / 新規登録</h2>
+<div id="studentMsg"></div>
+
+<div class="row">
+<div>
+<label>メール</label>
+<input id="studentEmail" type="email">
+</div>
+<div>
+<label>パスワード</label>
+<input id="studentPass" type="password">
+</div>
+</div>
+
+<div class="row">
+<div>
+<label>氏名</label>
+<input id="studentName">
+</div>
+<div>
+<label>電話番号</label>
+<input id="studentTel">
+</div>
+</div>
+
+<button onclick="studentSignup()">学生新規登録</button>
+<button class="secondary" onclick="studentLogin()">学生ログイン</button>
+</div>
+</section>
+
+<section id="company" class="section">
+<div class="card">
+<h2>企業ログイン / 新規登録</h2>
+<div id="companyMsg"></div>
+
+<div class="row">
+<div>
+<label>メール</label>
+<input id="companyEmail" type="email">
+</div>
+<div>
+<label>パスワード</label>
+<input id="companyPass" type="password">
+</div>
+</div>
+
+<div class="row">
+<div>
+<label>会社名</label>
+<input id="companyName">
+</div>
+<div>
+<label>電話番号</label>
+<input id="companyTel">
+</div>
+</div>
+
+<label>担当者名</label>
+<input id="companyPerson">
+
+<button onclick="companySignup()">企業登録申請</button>
+<button class="secondary" onclick="companyLogin()">企業ログイン</button>
+</div>
+</section>
+
+<section id="admin" class="section">
+<div class="card">
+<h2>管理者ログイン</h2>
+<div id="adminMsg"></div>
+
+<label>メール</label>
+<input id="adminEmail" type="email">
+
+<label>パスワード</label>
+<input id="adminPass" type="password">
+
+<button onclick="adminLogin()">管理者ログイン</button>
+</div>
+</section>
+
+<section id="dispatch" class="section">
+<div class="card">
+<h2>人材派遣求人</h2>
+<div id="dispatchList"></div>
+</div>
+</section>
+
+<section id="career" class="section">
+<div class="card">
+<h2>就職求人</h2>
+<div id="careerList"></div>
+</div>
+</section>
+
+<section id="dashboard" class="section">
+<div class="card">
+<h2 id="dashTitle">マイページ</h2>
+<p id="dashInfo"></p>
+<div id="dashContent"></div>
+</div>
+</section>
+
+</main>
+
+<script>
+const SUPABASE_URL='https://yhwdmlvzzrnvnnxapsfr.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_8ZhlfQc5zqU6xNEFduzymA__aBsJyzf';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+let currentProfile=null;
+
+function show(id){
+ document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+ document.getElementById(id).classList.add('active');
+
+ if(id==='dispatch') loadJobs('dispatch');
+ if(id==='career') loadJobs('career');
+}
+
+function val(id){return document.getElementById(id).value.trim();}
+function msg(id,text,type='ok'){
+ document.getElementById(id).innerHTML='<div class="alert '+type+'">'+text+'</div>';
+}
+
+async function getProfile(user){
+ const r=await sb.from('user_profiles').select('*').eq('auth_user_id',user.id).maybeSingle();
+ if(r.error) throw r.error;
+ return r.data;
+}
+
+async function createProfile(user,role,extra){
+ const payload={
+  auth_user_id:user.id,
+  email:user.email,
+  role:role,
+  name:extra.name||'',
+  tel:extra.tel||'',
+  status:role==='company'?'pending':'active'
+ };
+
+ const pr=await sb.from('user_profiles').insert(payload).select('*').single();
+ if(pr.error) throw pr.error;
+
+ if(role==='student'){
+  await sb.from('students').insert({
+   auth_user_id:user.id,
+   email:user.email,
+   name:extra.name,
+   tel:extra.tel,
+   school:'SOLA学園'
+  });
+ }
+
+ if(role==='company'){
+  await sb.from('companies').insert({
+   auth_user_id:user.id,
+   email:user.email,
+   company_name:extra.company_name,
+   tel:extra.tel,
+   contact_person:extra.contact_person,
+   status:'pending'
+  });
+ }
+
+ return pr.data;
+}
+
+async function studentSignup(){
+ try{
+  msg('studentMsg','登録中...','info');
+
+  const r=await sb.auth.signUp({
+   email:val('studentEmail'),
+   password:val('studentPass')
+  });
+
+  if(r.error) throw r.error;
+
+  await createProfile(r.data.user,'student',{
+   name:val('studentName'),
+   tel:val('studentTel')
+  });
+
+  msg('studentMsg','学生登録成功','ok');
+
+ }catch(e){
+  msg('studentMsg','登録エラー：'+e.message,'err');
+ }
+}
+
+async function studentLogin(){
+ try{
+  const r=await sb.auth.signInWithPassword({
+   email:val('studentEmail'),
+   password:val('studentPass')
+  });
+
+  if(r.error) throw r.error;
+
+  const p=await getProfile(r.data.user);
+
+  if(!p || p.role!=='student'){
+   throw new Error('学生プロフィールが見つかりません');
+  }
+
+  openDashboard(p);
+
+ }catch(e){
+  msg('studentMsg','ログインエラー：'+e.message,'err');
+ }
+}
+
+async function companySignup(){
+ try{
+  msg('companyMsg','登録中...','info');
+
+  const r=await sb.auth.signUp({
+   email:val('companyEmail'),
+   password:val('companyPass')
+  });
+
+  if(r.error) throw r.error;
+
+  await createProfile(r.data.user,'company',{
+   company_name:val('companyName'),
+   name:val('companyName'),
+   tel:val('companyTel'),
+   contact_person:val('companyPerson')
+  });
+
+  msg('companyMsg','企業登録申請完了','ok');
+
+ }catch(e){
+  msg('companyMsg','登録エラー：'+e.message,'err');
+ }
+}
+
+async function companyLogin(){
+ try{
+  const r=await sb.auth.signInWithPassword({
+   email:val('companyEmail'),
+   password:val('companyPass')
+  });
+
+  if(r.error) throw r.error;
+
+  const p=await getProfile(r.data.user);
+
+  if(!p || p.role!=='company'){
+   throw new Error('企業プロフィールが見つかりません');
+  }
+
+  if(p.status!=='approved' && p.status!=='active'){
+   throw new Error('管理者承認待ちです');
+  }
+
+  openDashboard(p);
+
+ }catch(e){
+  msg('companyMsg','ログインエラー：'+e.message,'err');
+ }
+}
+
+async function adminLogin(){
+ try{
+  const r=await sb.auth.signInWithPassword({
+   email:val('adminEmail'),
+   password:val('adminPass')
+  });
+
+  if(r.error) throw r.error;
+
+  let p=await getProfile(r.data.user);
+
+  if(!p && r.data.user.email==='admin@sola-career.com'){
+   const cr=await sb.from('user_profiles').insert({
+    auth_user_id:r.data.user.id,
+    email:r.data.user.email,
+    role:'admin',
+    name:'管理者',
+    status:'active'
+   }).select('*').single();
+
+   if(cr.error) throw cr.error;
+
+   p=cr.data;
+  }
+
+  if(!p || p.role!=='admin'){
+   throw new Error('管理者プロフィールが見つかりません');
+  }
+
+  openDashboard(p);
+
+ }catch(e){
+  msg('adminMsg','ログインエラー：'+e.message,'err');
+ }
+}
+
+function openDashboard(profile){
+ currentProfile=profile;
+
+ document.getElementById('dashTitle').textContent=
+  profile.role==='admin'
+  ?'管理者ダッシュボード'
+  :profile.role==='company'
+  ?'企業マイページ'
+  :'学生マイページ';
+
+ document.getElementById('dashInfo').textContent=
+  profile.email+' / '+profile.role;
+
+ document.getElementById('dashContent').innerHTML=
+  '<div class="alert ok">Supabase Auth ログイン成功</div>';
+
+ show('dashboard');
+}
+
+async function loadJobs(kind){
+ const table=kind==='dispatch'?'dispatch_jobs':'career_jobs';
+ const box=document.getElementById(kind==='dispatch'?'dispatchList':'careerList');
+
+ const r=await sb.from(table)
+ .select('*')
+ .eq('active',true)
+ .order('created_at',{ascending:false});
+
+ if(r.error){
+  box.innerHTML='読込エラー';
+  return;
+ }
+
+ let html='';
+
+ (r.data||[]).forEach(j=>{
+  html+='<div class="job"><h3>'+j.company+'</h3><p>'+(j.job_type||'')+'</p><p>'+(j.work_place||'')+'</p><p>'+(j.pay||'')+'</p></div>';
+ });
+
+ box.innerHTML=html||'求人はありません';
+}
+</script>
+
+</body>
+</html>
