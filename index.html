@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SOLA CAREER</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--green:#32c904;--blue:#2563eb;--bg:#fffdf7;--ink:#111827;--line:#e5e7eb}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid var(--line);padding:12px 18px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.logo{font-size:23px;font-weight:900;margin-right:auto}.logo span{color:var(--green)}
+button{border:0;border-radius:10px;background:var(--green);color:#fff;padding:9px 13px;font-weight:800;cursor:pointer;margin:2px}
+button.secondary{background:#e0f2fe;color:#0369a1}button.gray{background:#f1f5f9;color:#334155}button.red{background:#dc2626}button.blue{background:var(--blue)}
+main{max-width:1180px;margin:12px auto;padding:0 12px}
+.section{display:none}.section.active{display:block}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 4px 14px rgba(15,23,42,.05)}
+input,textarea,select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;margin:5px 0 12px;font:inherit}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.alert{padding:12px;border-radius:12px;margin:10px 0}.ok{background:#dcfce7;color:#166534}.err{background:#fee2e2;color:#991b1b}.info{background:#e0f2fe;color:#075985}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.tabs button{background:#f1f5f9;color:#334155}
+table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--line);padding:9px;text-align:left;vertical-align:top;font-size:14px}th{background:#f8fafc}
+.badge{display:inline-block;border-radius:999px;background:#e0f2fe;color:#0369a1;padding:4px 10px;font-size:12px;font-weight:900}
+.file-link{display:inline-block;margin:3px;padding:5px 9px;border-radius:999px;background:#e0f2fe;color:#0369a1;text-decoration:none;font-weight:800;font-size:12px}
+.portal-top{display:grid;grid-template-columns:260px 260px 1fr;gap:16px;margin-bottom:16px}
+.portal-entry{min-height:210px;border-radius:22px;padding:26px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;box-shadow:0 8px 24px rgba(15,23,42,.08);cursor:pointer;transition:.18s}
+.portal-entry:hover{transform:translateY(-4px);box-shadow:0 16px 36px rgba(15,23,42,.16)}
+.portal-entry.dispatch{background:linear-gradient(135deg,#ecffe4,#f7fff4)}
+.portal-entry.career{background:linear-gradient(135deg,#eef7ff,#f8fbff)}
+.portal-icon{width:64px;height:64px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:14px;box-shadow:0 6px 18px rgba(15,23,42,.08)}
+.portal-cta{background:#16a34a;color:#fff;border-radius:12px;padding:10px 25px;font-weight:900}.career .portal-cta{background:#2563eb}
+.portal-hero{min-height:210px;border-radius:22px;padding:34px;background:linear-gradient(135deg,#fff,#eff6ff);border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:20px;box-shadow:0 8px 24px rgba(15,23,42,.08)}
+.portal-hero h1{font-size:36px;margin:0 0 12px;line-height:1.35}.portal-hero p{color:#334155;line-height:1.8}
+.portal-hero-visual{width:220px;height:140px;border-radius:18px;background:linear-gradient(135deg,#dbeafe,#dcfce7);display:flex;align-items:center;justify-content:center;font-size:66px;flex-shrink:0}
+.portal-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}.portal-panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 6px 18px rgba(15,23,42,.06)}
+.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.panel-head h2{margin:0}.more{color:#2563eb;font-weight:900;font-size:13px;cursor:pointer}
+.portal-item{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:13px 0;border-bottom:1px solid var(--line);cursor:pointer}.portal-item:last-child{border-bottom:0}.portal-item:hover .title{color:#2563eb}
+.meta{font-size:12px;color:#64748b}.title{font-weight:900;margin:4px 0}.summary{font-size:13px;color:#475569;line-height:1.5}.arrow{font-size:24px;color:#94a3b8}
+.portal-banner{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;padding:22px 26px;border-radius:20px;border:1px solid #dbeafe;background:linear-gradient(135deg,#eef7ff,#f7fff4);box-shadow:0 6px 18px rgba(15,23,42,.06);margin:16px 0}
+.portal-banner-link{color:#16a34a;font-size:22px;font-weight:900;cursor:pointer}
+.job{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0;box-shadow:0 4px 14px rgba(15,23,42,.05)}
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin:12px 0}.dash-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 4px 14px rgba(15,23,42,.05)}.dash-card b{display:block;font-size:30px;color:var(--green);margin-top:6px}.dash-card span{font-size:13px;color:#64748b}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px}.modal.active{display:flex}.modal-panel{background:#fff;max-width:760px;width:100%;max-height:86vh;overflow:auto;border-radius:20px;padding:22px;box-shadow:0 30px 70px rgba(0,0,0,.28)}
+footer{margin-top:28px;padding:12px 14px;background:#f8fafc;color:#475569;text-align:center;border-top:2px solid var(--green);font-size:13px}
+@media(max-width:950px){.portal-top,.portal-grid{grid-template-columns:1fr}.portal-hero{flex-direction:column;align-items:flex-start}.portal-hero-visual{width:100%}.row{grid-template-columns:1fr}.portal-banner{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">SOLA <span>CAREER</span></div>
+  <button class="secondary" onclick="showSection('home')">ホーム</button>
+  <button class="secondary" onclick="showSection('studentLogin')">学生</button>
+  <button class="secondary" onclick="showSection('companyLogin')">企業</button>
+  <button class="secondary" onclick="showSection('adminLogin')">管理者</button>
+  <button class="secondary" onclick="showDispatchPublic()">人材派遣</button>
+  <button class="secondary" onclick="showCareerPublic()">就職支援</button>
+  <button class="gray" onclick="logout()">ログアウト</button>
+</header>
+<main>
+<section id="home" class="section active">
+  <div class="portal-top">
+    <div class="portal-entry dispatch" onclick="showDispatchPublic()"><div class="portal-icon">💼</div><h2>人材派遣</h2><p>短期・単発のお仕事を探す</p><div class="portal-cta">求人を見る →</div></div>
+    <div class="portal-entry career" onclick="showCareerPublic()"><div class="portal-icon">🏢</div><h2>就職支援</h2><p>正社員・長期のお仕事を探す</p><div class="portal-cta">求人を見る →</div></div>
+    <div class="portal-hero"><div><h1>求人情報を<br>確認できます</h1><p>学生登録後、求人確認・応募・応募状況確認ができます。</p></div><div class="portal-hero-visual">🎓</div></div>
+  </div>
+  <div class="portal-grid">
+    <div class="portal-panel"><div class="panel-head"><h2>お知らせ</h2><span class="more" onclick="openDetail('お知らせ','学生向けのお知らせを掲載しています。求人情報、履歴書登録、面接案内などを定期的に確認してください。','案内')">詳細を見る →</span></div><div id="homeNotices"></div></div>
+    <div class="portal-panel"><div class="panel-head"><h2>新着求人</h2><span class="more" onclick="showDispatchPublic()">詳細を見る →</span></div><div id="homeNewJobs"></div></div>
+    <div class="portal-panel"><div class="panel-head"><h2>急募・おすすめ求人</h2><span class="more" onclick="showCareerPublic()">詳細を見る →</span></div><div id="homePickupJobs"></div></div>
+  </div>
+  <div class="portal-banner"><div><h2>企業の採用ご担当者様へ</h2><p>求人掲載・企業紹介・外国人採用PRをご希望の場合は、SOLA CAREER CENTERまでお問い合わせください。</p></div><div class="portal-banner-link" onclick="openDetail('広告掲載・企業PRについて','求人掲載・企業紹介・外国人採用PRをご希望の場合は、SOLA CAREER CENTERまでお問い合わせください。\\n\\nお問い合わせ：choa_tei@sola.ac.jp','企業向け案内')">こちら →</div></div>
+</section>
+
+<section id="studentLogin" class="section"><div class="card"><h2>学生ログイン / 新規登録</h2><div id="studentMsg"></div><div class="row"><div><label>メール</label><input id="studentEmail" type="email"></div><div><label>パスワード</label><input id="studentPass" type="password" placeholder="英字・数字を含む8文字以上で入力してください"></div></div><div class="row"><div><label>氏名</label><input id="studentName"></div><div><label>電話番号</label><input id="studentTel"></div></div><button onclick="studentSignup()">学生新規登録</button><button class="secondary" onclick="studentLogin()">学生ログイン</button></div></section>
+
+<section id="companyLogin" class="section"><div class="card"><h2>企業ログイン / 新規登録</h2><div id="companyMsg"></div><div class="row"><div><label>メール</label><input id="companyEmail" type="email"></div><div><label>パスワード</label><input id="companyPass" type="password" placeholder="英字・数字を含む8文字以上で入力してください"></div></div><div class="row"><div><label>会社名</label><input id="companyName"></div><div><label>電話番号</label><input id="companyTel"></div></div><label>担当者名</label><input id="companyPerson"><button onclick="companySignup()">企業登録申請</button><button class="secondary" onclick="companyLogin()">企業ログイン</button></div></section>
+
+<section id="adminLogin" class="section"><div class="card"><h2>管理者ログイン</h2><div id="adminMsg"></div><label>メール</label><input id="adminEmail" type="email" placeholder="admin@sola-career.com"><label>パスワード</label><input id="adminPass" type="password" placeholder="英字・数字を含む8文字以上で入力してください"><button onclick="adminLogin()">管理者ログイン</button><div class="alert info">管理者アカウントはSupabase Authenticationで作成後、SQLでuser_profilesへ紐づけてください。</div></div></section>
+
+<section id="publicDispatch" class="section"><div class="card"><h2>人材派遣求人</h2><div id="publicDispatchList"></div></div></section>
+<section id="publicCareer" class="section"><div class="card"><h2>就職求人</h2><div id="publicCareerList"></div></div></section>
+
+<section id="studentDash" class="section"><div class="card"><h2>学生マイページ</h2><p id="studentInfo"></p><div class="tabs"><button onclick="studentDashboard()">Dashboard</button><button onclick="loadStudentJobs('dispatch')">派遣求人</button><button onclick="loadStudentJobs('career')">就職求人</button><button onclick="studentApplications()">応募履歴</button><button onclick="studentFiles()">履歴書・写真</button><button onclick="studentPathSurvey()">進路報告</button></div><div id="studentContent"></div></div></section>
+
+<section id="companyDash" class="section"><div class="card"><h2>企業マイページ</h2><p id="companyInfo"></p><div class="tabs"><button onclick="companyDashboard()">Dashboard</button><button onclick="companyJobs()">自社求人</button><button onclick="companyJobForm()">求人投稿</button><button onclick="companyApplicants()">応募学生</button></div><div id="companyContent"></div></div></section>
+
+<section id="adminDash" class="section"><div class="card"><h2>管理者ダッシュボード</h2><p id="adminInfo"></p><div class="tabs"><button onclick="adminDashboard()">Dashboard</button><button onclick="adminJobForm()">求人登録</button><button onclick="adminJobs()">求人管理</button><button onclick="adminApplications()">応募管理</button><button onclick="adminCompanies()">企業管理</button><button onclick="adminStudents()">学生管理</button><button onclick="adminPathStats()">進路統計</button></div><div id="adminContent"></div></div></section>
+</main>
+
+<div id="detailModal" class="modal"><div class="modal-panel"><button class="gray" onclick="closeDetail()">閉じる</button><div id="detailContent"></div></div></div>
+<footer>プラットフォーム管理責任者：SOLA学園 キャリアセンター 丁 超亜（テイ チョウア）　お問い合わせ：choa_tei@sola.ac.jp</footer>
+
+<script>
+const SUPABASE_URL='https://yhwdmlvzzrnvnnxapsfr.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_8ZhlfQc5zqU6xNEFduzymA__aBsJyzf';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+let currentProfile=null;
+const ADMIN_EMAIL='admin@sola-career.com';
+
+function showSection(id){document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.getElementById(id)?.classList.add('active')}
+function val(id){return document.getElementById(id)?.value.trim()||''}
+function msg(id,t,type='ok'){const e=document.getElementById(id);if(e)e.innerHTML='<div class="alert '+type+'">'+escapeHtml(t)+'</div>'}
+function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function checkPassword(p){return /[A-Za-z]/.test(p)&&/[0-9]/.test(p)&&p.length>=8}
+function openDetail(title,body,meta){document.getElementById('detailContent').innerHTML='<div class="meta">'+escapeHtml(meta||'')+'</div><h2>'+escapeHtml(title)+'</h2><p style="white-space:pre-line;line-height:1.9">'+escapeHtml(body||'')+'</p>';document.getElementById('detailModal').classList.add('active')}
+function closeDetail(){document.getElementById('detailModal').classList.remove('active')}
+document.getElementById('detailModal').addEventListener('click',e=>{if(e.target.id==='detailModal')closeDetail()})
+
+async function getProfile(user){
+  let r=await sb.from('user_profiles').select('*').eq('auth_user_id',user.id).maybeSingle();
+  if(r.error)throw r.error;
+  if(!r.data){
+    r=await sb.from('user_profiles').select('*').eq('email',user.email).maybeSingle();
+    if(r.error)throw r.error;
+    if(r.data && !r.data.auth_user_id){
+      await sb.from('user_profiles').update({auth_user_id:user.id}).eq('id',r.data.id);
+      r.data.auth_user_id=user.id;
+    }
+  }
+  return r.data;
+}
+
+async function createProfile(user,role,extra){
+  const profile={auth_user_id:user.id,email:user.email,role,name:extra.name||'',tel:extra.tel||'',status:role==='company'?'pending':'active'};
+  const pr=await sb.from('user_profiles').upsert(profile,{onConflict:'email'}).select('*').single();
+  if(pr.error)throw pr.error;
+  if(role==='student'){
+    const sr=await sb.from('students').upsert({auth_user_id:user.id,email:user.email,name:extra.name,tel:extra.tel,school:'SOLA学園'},{onConflict:'email'}).select('*').single();
+    if(sr.error)throw sr.error;
+    await sb.from('user_profiles').update({student_id:sr.data.id}).eq('email',user.email);
+  }
+  if(role==='company'){
+    const cr=await sb.from('companies').upsert({auth_user_id:user.id,email:user.email,company_name:extra.company_name,tel:extra.tel,contact_person:extra.contact_person,status:'approved',approved:true},{onConflict:'email'}).select('*').single();
+    if(cr.error)throw cr.error;
+    await sb.from('user_profiles').update({company_id:cr.data.id,status:'approved'}).eq('email',user.email);
+  }
+}
+
+async function studentSignup(){
+  try{
+    const email=val('studentEmail'),pass=val('studentPass');
+    if(!email||!email.includes('@'))return alert('メールアドレスを入力してください。');
+    if(!checkPassword(pass))return alert('パスワードは英字・数字を含む8文字以上で入力してください。');
+    const r=await sb.auth.signUp({email,password:pass}); if(r.error)throw r.error;
+    await createProfile(r.data.user,'student',{name:val('studentName'),tel:val('studentTel')});
+    msg('studentMsg','学生登録成功。ログインしてください。','ok');
+  }catch(e){msg('studentMsg','登録エラー：'+e.message,'err')}
+}
+async function studentLogin(){
+  try{
+    const r=await sb.auth.signInWithPassword({email:val('studentEmail'),password:val('studentPass')}); if(r.error)throw r.error;
+    const p=await getProfile(r.data.user); if(!p||p.role!=='student')throw new Error('学生プロフィールが見つかりません');
+    currentProfile=p;document.getElementById('studentInfo').textContent=p.email;showSection('studentDash');studentDashboard();
+  }catch(e){msg('studentMsg','ログインエラー：'+e.message,'err')}
+}
+async function companySignup(){
+  try{
+    const email=val('companyEmail'),pass=val('companyPass');
+    if(!email||!email.includes('@'))return alert('メールアドレスを入力してください。');
+    if(!checkPassword(pass))return alert('パスワードは英字・数字を含む8文字以上で入力してください。');
+    if(!val('companyName'))return alert('会社名を入力してください。');
+    if(!val('companyTel'))return alert('電話番号を入力してください。');
+    if(!val('companyPerson'))return alert('担当者名を入力してください。');
+    const r=await sb.auth.signUp({email,password:pass}); if(r.error)throw r.error;
+    await createProfile(r.data.user,'company',{company_name:val('companyName'),name:val('companyName'),tel:val('companyTel'),contact_person:val('companyPerson')});
+    msg('companyMsg','企業登録成功。ログインしてください。','ok');
+  }catch(e){msg('companyMsg','登録エラー：'+e.message,'err')}
+}
+async function companyLogin(){
+  try{
+    const r=await sb.auth.signInWithPassword({email:val('companyEmail'),password:val('companyPass')}); if(r.error)throw r.error;
+    const p=await getProfile(r.data.user); if(!p||p.role!=='company')throw new Error('企業プロフィールが見つかりません');
+    currentProfile=p;document.getElementById('companyInfo').textContent=p.email;showSection('companyDash');companyDashboard();
+  }catch(e){msg('companyMsg','ログインエラー：'+e.message,'err')}
+}
+async function adminLogin(){
+  try{
+    const r=await sb.auth.signInWithPassword({email:val('adminEmail'),password:val('adminPass')}); if(r.error)throw r.error;
+    let p=await getProfile(r.data.user);
+    if(!p && r.data.user.email===ADMIN_EMAIL){
+      const cr=await sb.from('user_profiles').upsert({auth_user_id:r.data.user.id,email:r.data.user.email,role:'admin',name:'管理者',status:'active'},{onConflict:'email'}).select('*').single();
+      if(cr.error)throw cr.error;p=cr.data;
+    }
+    if(!p||p.role!=='admin')throw new Error('管理者プロフィールが見つかりません');
+    currentProfile=p;document.getElementById('adminInfo').textContent=p.email;showSection('adminDash');adminDashboard();
+  }catch(e){msg('adminMsg','ログインエラー：'+e.message,'err')}
+}
+async function logout(){await sb.auth.signOut();currentProfile=null;showSection('home')}
+
+async function ensureStudentId(){if(currentProfile.student_id)return currentProfile.student_id;const r=await sb.from('students').select('*').eq('email',currentProfile.email).maybeSingle();if(r.error)throw r.error;if(r.data){currentProfile.student_id=r.data.id;return r.data.id}throw new Error('学生情報がありません')}
+async function ensureCompanyId(){if(currentProfile.company_id)return currentProfile.company_id;const r=await sb.from('companies').select('*').eq('email',currentProfile.email).maybeSingle();if(r.error)throw r.error;if(r.data){currentProfile.company_id=r.data.id;return r.data.id}throw new Error('企業情報がありません')}
+
+function jobHtml(job,kind,apply=false,manage=false){
+  let h='<div class="job"><span class="badge">'+(kind==='dispatch'?'派遣':'就職')+'</span><h3>'+escapeHtml(job.company||'')+'</h3><p><b>'+escapeHtml(job.job_type||'')+'</b></p><p>'+escapeHtml(job.work_place||'')+' / '+escapeHtml(job.pay||'')+'</p><p>'+escapeHtml(job.work_content||job.detail_description||'')+'</p>';
+  h+='<button class="secondary" onclick="openDetail(\''+escapeHtml(job.company||'').replace(/'/g,'&#39;')+'｜'+escapeHtml(job.job_type||'').replace(/'/g,'&#39;')+'\',\''+escapeHtml((job.work_content||'')+'\\n'+(job.detail_description||'')).replace(/'/g,'&#39;')+'\',\'求人詳細\')">詳細を見る</button>';
+  if(apply)h+='<button onclick="applyJob(\''+kind+'\',\''+job.id+'\')">応募する</button>';
+  if(manage)h+='<button class="red" onclick="deleteJob(\''+kind+'\',\''+job.id+'\')">削除</button>';
+  h+='</div>';return h;
+}
+async function showDispatchPublic(){showSection('publicDispatch');const r=await sb.from('dispatch_jobs').select('*').eq('active',true).order('created_at',{ascending:false});document.getElementById('publicDispatchList').innerHTML=(r.data||[]).map(j=>jobHtml(j,'dispatch',currentProfile?.role==='student')).join('')||'求人はありません';}
+async function showCareerPublic(){showSection('publicCareer');const r=await sb.from('career_jobs').select('*').eq('active',true).order('created_at',{ascending:false});document.getElementById('publicCareerList').innerHTML=(r.data||[]).map(j=>jobHtml(j,'career',currentProfile?.role==='student')).join('')||'求人はありません';}
+async function loadHome(){const n=await sb.from('site_notices').select('*').eq('active',true).order('created_at',{ascending:false}).limit(2);document.getElementById('homeNotices').innerHTML=(n.data||[]).map(x=>'<div class="portal-item" onclick="openDetail(\''+escapeHtml(x.title).replace(/'/g,'&#39;')+'\',\''+escapeHtml(x.body).replace(/'/g,'&#39;')+'\',\''+escapeHtml(x.category||'お知らせ')+'\')"><div><div class="meta">'+escapeHtml(x.category||'お知らせ')+'</div><div class="title">'+escapeHtml(x.title)+'</div><div class="summary">'+escapeHtml((x.body||'').slice(0,45))+'...</div></div><div class="arrow">›</div></div>').join('')||'お知らせはありません';
+ const d=await sb.from('dispatch_jobs').select('*').eq('active',true).order('created_at',{ascending:false}).limit(2);document.getElementById('homeNewJobs').innerHTML=(d.data||[]).map(j=>'<div class="portal-item" onclick="showDispatchPublic()"><div><div class="meta">NEW</div><div class="title">'+escapeHtml(j.company||'')+'</div><div class="summary">'+escapeHtml(j.job_type||'')+' / '+escapeHtml(j.work_place||'')+'</div></div><div class="arrow">›</div></div>').join('')||'求人はありません';
+ const c=await sb.from('career_jobs').select('*').eq('active',true).order('created_at',{ascending:false}).limit(2);document.getElementById('homePickupJobs').innerHTML=(c.data||[]).map(j=>'<div class="portal-item" onclick="showCareerPublic()"><div><div class="meta">PICK UP</div><div class="title">'+escapeHtml(j.company||'')+'</div><div class="summary">'+escapeHtml(j.job_type||'')+' / '+escapeHtml(j.work_place||'')+'</div></div><div class="arrow">›</div></div>').join('')||'求人はありません';}
+
+async function loadStudentJobs(kind){const table=kind==='dispatch'?'dispatch_jobs':'career_jobs';const r=await sb.from(table).select('*').eq('active',true).order('created_at',{ascending:false});document.getElementById('studentContent').innerHTML=(r.data||[]).map(j=>jobHtml(j,kind,true)).join('')||'求人はありません'}
+async function applyJob(kind,id){try{const sid=await ensureStudentId();const table=kind==='dispatch'?'dispatch_apps':'career_apps';const ex=await sb.from(table).select('id').eq('student_id',sid).eq('job_id',id).maybeSingle();if(ex.data)return alert('すでに応募済みです');const r=await sb.from(table).insert({student_id:sid,job_id:id,status:'応募中'});if(r.error)throw r.error;alert('応募しました');studentApplications()}catch(e){alert('応募エラー：'+e.message)}}
+async function studentApplications(){const sid=await ensureStudentId();const d=await sb.from('dispatch_apps').select('*,dispatch_jobs(company,job_type,work_place,pay)').eq('student_id',sid);const c=await sb.from('career_apps').select('*,career_jobs(company,job_type,work_place,pay)').eq('student_id',sid);let h='<h3>応募履歴</h3>';[...(d.data||[]).map(a=>['派遣',a,a.dispatch_jobs]),...(c.data||[]).map(a=>['就職',a,a.career_jobs])].forEach(x=>h+='<div class="job"><span class="badge">'+x[0]+'</span><h3>'+escapeHtml(x[2]?.company||'')+'</h3><p>'+escapeHtml(x[2]?.job_type||'')+'</p><p>状態：'+escapeHtml(x[1].status||'応募中')+'</p></div>');document.getElementById('studentContent').innerHTML=h}
+async function studentFiles(){document.getElementById('studentContent').innerHTML='<h3>履歴書・写真</h3><label>履歴書PDF URL</label><input id="resumeUrl"><label>証明写真URL</label><input id="photoUrl"><button onclick="saveStudentFiles()">保存</button>'}
+async function saveStudentFiles(){const sid=await ensureStudentId();const r=await sb.from('students').update({resume_url:val('resumeUrl'),photo_url:val('photoUrl')}).eq('id',sid);if(r.error)alert(r.error.message);else alert('保存しました')}
+async function studentDashboard(){const sid=await ensureStudentId();const d=await sb.from('dispatch_apps').select('*').eq('student_id',sid);const c=await sb.from('career_apps').select('*').eq('student_id',sid);document.getElementById('studentContent').innerHTML='<h3>学生Dashboard</h3><div class="dash-grid"><div class="dash-card"><span>応募数</span><b>'+((d.data||[]).length+(c.data||[]).length)+'</b></div></div>'}
+async function studentPathSurvey(){const sid=await ensureStudentId();const r=await sb.from('graduate_paths').select('*').eq('student_id',sid).maybeSingle();const x=r.data||{};document.getElementById('studentContent').innerHTML='<h3>卒業後の進路報告</h3><div class="row"><div><label>氏名</label><input id="pathName" value="'+escapeHtml(x.student_name||currentProfile.name||'')+'"></div><div><label>学科・クラス</label><input id="pathClass" value="'+escapeHtml(x.class_name||'')+'"></div></div><div class="row"><div><label>国籍</label><input id="pathNationality" value="'+escapeHtml(x.nationality||'')+'"></div><div><label>卒業年度</label><input id="pathYear" value="'+escapeHtml(x.graduation_year||'')+'"></div></div><label>進路区分</label><select id="pathType"><option>就職</option><option>特定技能</option><option>進学</option><option>帰国</option><option>アルバイト継続</option><option>未定</option><option>その他</option></select><label>企業名・進学先</label><input id="pathCompany" value="'+escapeHtml(x.company_name||'')+'"><label>職種・学科</label><input id="pathJob" value="'+escapeHtml(x.job_type||'')+'"><label>備考</label><textarea id="pathMemo">'+escapeHtml(x.memo||'')+'</textarea><button onclick="savePath()">保存</button>';if(x.path_type)document.getElementById('pathType').value=x.path_type}
+async function savePath(){const sid=await ensureStudentId();const payload={student_id:sid,student_name:val('pathName'),class_name:val('pathClass'),nationality:val('pathNationality'),graduation_year:val('pathYear'),path_type:val('pathType'),company_name:val('pathCompany'),job_type:val('pathJob'),memo:val('pathMemo'),updated_at:new Date().toISOString()};const ex=await sb.from('graduate_paths').select('id').eq('student_id',sid).maybeSingle();const r=ex.data?await sb.from('graduate_paths').update(payload).eq('id',ex.data.id):await sb.from('graduate_paths').insert(payload);if(r.error)alert(r.error.message);else alert('保存しました')}
+
+async function companyDashboard(){await ensureCompanyId();document.getElementById('companyContent').innerHTML='<h3>企業Dashboard</h3><button onclick="companyJobForm()">求人投稿</button><button class="secondary" onclick="companyApplicants()">応募学生を見る</button>'}
+function companyJobForm(){document.getElementById('companyContent').innerHTML='<h3>求人投稿</h3><label>区分</label><select id="jobKind"><option value="dispatch">人材派遣</option><option value="career">就職支援</option></select><label>職種</label><input id="jobType"><label>仕事内容</label><textarea id="jobWork"></textarea><label>勤務地</label><input id="jobPlace"><label>給与</label><input id="jobPay"><button onclick="submitJob()">投稿</button>'}
+async function submitJob(){const cid=await ensureCompanyId();const comp=await sb.from('companies').select('*').eq('id',cid).maybeSingle();const kind=val('jobKind');const payload={company:comp.data.company_name,company_id:cid,job_type:val('jobType'),work_content:val('jobWork'),work_place:val('jobPlace'),pay:val('jobPay'),active:true};const r=await sb.from(kind==='dispatch'?'dispatch_jobs':'career_jobs').insert(payload);if(r.error)alert(r.error.message);else{alert('投稿しました');companyJobs()}}
+async function companyJobs(){const cid=await ensureCompanyId();const d=await sb.from('dispatch_jobs').select('*').eq('company_id',cid);const c=await sb.from('career_jobs').select('*').eq('company_id',cid);document.getElementById('companyContent').innerHTML=[...(d.data||[]).map(j=>jobHtml(j,'dispatch',false,true)),...(c.data||[]).map(j=>jobHtml(j,'career',false,true))].join('')||'求人はありません'}
+async function deleteJob(kind,id){const r=await sb.from(kind==='dispatch'?'dispatch_jobs':'career_jobs').delete().eq('id',id);if(r.error)alert(r.error.message);else companyJobs()}
+async function companyApplicants(){const cid=await ensureCompanyId();const dj=await sb.from('dispatch_jobs').select('id').eq('company_id',cid);const cj=await sb.from('career_jobs').select('id').eq('company_id',cid);let h='<h3>応募学生</h3>';if((dj.data||[]).length){const r=await sb.from('dispatch_apps').select('*,students(name,email,tel),dispatch_jobs(job_type)').in('job_id',(dj.data||[]).map(j=>j.id));(r.data||[]).forEach(a=>h+='<div class="job"><span class="badge">派遣</span><p>'+escapeHtml(a.dispatch_jobs?.job_type||'')+'</p><p>'+escapeHtml(a.students?.name||'')+' / '+escapeHtml(a.students?.email||'')+'</p></div>')}if((cj.data||[]).length){const r=await sb.from('career_apps').select('*,students(name,email,tel),career_jobs(job_type)').in('job_id',(cj.data||[]).map(j=>j.id));(r.data||[]).forEach(a=>h+='<div class="job"><span class="badge">就職</span><p>'+escapeHtml(a.career_jobs?.job_type||'')+'</p><p>'+escapeHtml(a.students?.name||'')+' / '+escapeHtml(a.students?.email||'')+'</p></div>')}document.getElementById('companyContent').innerHTML=h}
+
+async function adminDashboard(){const s=await sb.from('students').select('id');const c=await sb.from('companies').select('id');const d=await sb.from('dispatch_jobs').select('id');const j=await sb.from('career_jobs').select('id');document.getElementById('adminContent').innerHTML='<h3>管理者Dashboard</h3><div class="dash-grid"><div class="dash-card"><span>学生数</span><b>'+(s.data||[]).length+'</b></div><div class="dash-card"><span>企業数</span><b>'+(c.data||[]).length+'</b></div><div class="dash-card"><span>求人数</span><b>'+((d.data||[]).length+(j.data||[]).length)+'</b></div></div>'}
+function adminJobForm(){document.getElementById('adminContent').innerHTML='<h3>管理者求人登録</h3><label>区分</label><select id="adminJobKind"><option value="dispatch">人材派遣</option><option value="career">就職支援</option></select><label>会社名</label><input id="adminJobCompany"><label>職種</label><input id="adminJobType"><label>仕事内容</label><textarea id="adminJobWork"></textarea><label>勤務地</label><input id="adminJobPlace"><label>給与</label><input id="adminJobPay"><button onclick="adminSubmitJob()">登録</button>'}
+async function adminSubmitJob(){const kind=val('adminJobKind');const payload={company:val('adminJobCompany'),job_type:val('adminJobType'),work_content:val('adminJobWork'),work_place:val('adminJobPlace'),pay:val('adminJobPay'),active:true};const r=await sb.from(kind==='dispatch'?'dispatch_jobs':'career_jobs').insert(payload);if(r.error)alert(r.error.message);else{alert('登録しました');adminJobs()}}
+async function adminJobs(){const d=await sb.from('dispatch_jobs').select('*');const c=await sb.from('career_jobs').select('*');document.getElementById('adminContent').innerHTML=[...(d.data||[]).map(j=>jobHtml(j,'dispatch',false,true)),...(c.data||[]).map(j=>jobHtml(j,'career',false,true))].join('')||'求人はありません'}
+async function adminApplications(){const d=await sb.from('dispatch_apps').select('*,students(name,email),dispatch_jobs(company,job_type)');const c=await sb.from('career_apps').select('*,students(name,email),career_jobs(company,job_type)');let h='<h3>応募管理</h3><table><tr><th>区分</th><th>企業</th><th>職種</th><th>学生</th><th>状態</th></tr>';[...(d.data||[]).map(a=>['派遣',a,a.dispatch_jobs]),...(c.data||[]).map(a=>['就職',a,a.career_jobs])].forEach(x=>h+='<tr><td>'+x[0]+'</td><td>'+escapeHtml(x[2]?.company||'')+'</td><td>'+escapeHtml(x[2]?.job_type||'')+'</td><td>'+escapeHtml(x[1].students?.name||'')+'<br>'+escapeHtml(x[1].students?.email||'')+'</td><td>'+escapeHtml(x[1].status||'')+'</td></tr>');document.getElementById('adminContent').innerHTML=h+'</table>'}
+async function adminCompanies(){const r=await sb.from('companies').select('*');document.getElementById('adminContent').innerHTML='<h3>企業管理</h3><table><tr><th>会社名</th><th>メール</th><th>電話</th><th>担当者</th></tr>'+(r.data||[]).map(x=>'<tr><td>'+escapeHtml(x.company_name||'')+'</td><td>'+escapeHtml(x.email||'')+'</td><td>'+escapeHtml(x.tel||'')+'</td><td>'+escapeHtml(x.contact_person||'')+'</td></tr>').join('')+'</table>'}
+async function adminStudents(){const r=await sb.from('students').select('*');document.getElementById('adminContent').innerHTML='<h3>学生管理</h3><table><tr><th>氏名</th><th>メール</th><th>電話</th></tr>'+(r.data||[]).map(x=>'<tr><td>'+escapeHtml(x.name||'')+'</td><td>'+escapeHtml(x.email||'')+'</td><td>'+escapeHtml(x.tel||'')+'</td></tr>').join('')+'</table>'}
+async function adminPathStats(){const r=await sb.from('graduate_paths').select('*');let h='<h3>進路統計</h3><button onclick="downloadPathCsv()">CSV出力</button><table><tr><th>氏名</th><th>学科</th><th>国籍</th><th>進路</th><th>企業名</th></tr>';(r.data||[]).forEach(x=>h+='<tr><td>'+escapeHtml(x.student_name||'')+'</td><td>'+escapeHtml(x.class_name||'')+'</td><td>'+escapeHtml(x.nationality||'')+'</td><td>'+escapeHtml(x.path_type||'')+'</td><td>'+escapeHtml(x.company_name||'')+'</td></tr>');document.getElementById('adminContent').innerHTML=h+'</table>'}
+async function downloadPathCsv(){const r=await sb.from('graduate_paths').select('*');const headers=['氏名','学科','国籍','卒業年度','進路','企業名','職種','備考'];const rows=(r.data||[]).map(x=>[x.student_name,x.class_name,x.nationality,x.graduation_year,x.path_type,x.company_name,x.job_type,x.memo]);const esc=v=>'"'+String(v||'').replace(/"/g,'""')+'"';const csv='\ufeff'+headers.map(esc).join(',')+'\n'+rows.map(r=>r.map(esc).join(',')).join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='卒業生進路統計.csv';a.click();URL.revokeObjectURL(url)}
+
+document.addEventListener('DOMContentLoaded',loadHome);
+</script>
+</body>
+</html>
