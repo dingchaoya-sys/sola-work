@@ -65,6 +65,26 @@ footer{margin-top:28px;padding:12px;background:#f8fafc;text-align:center;border-
   .portal-grid{gap:10px}.panel{padding:14px}
 }
 
+
+/* ===== Desktop Install Button Fix V3.3.1 ===== */
+.pwa-install-bar{
+  position:fixed!important;
+  right:18px!important;
+  bottom:84px!important;
+  z-index:10001!important;
+  display:block!important;
+}
+#installAppBtn{
+  display:inline-block!important;
+  background:#2563eb!important;
+  color:#fff!important;
+}
+@media(min-width:761px){
+  .pwa-install-bar{
+    bottom:24px!important;
+  }
+}
+
 </style>
 <!-- PWA V3.2 -->
 <link rel="manifest" href="/manifest.json">
@@ -95,7 +115,7 @@ footer{margin-top:28px;padding:12px;background:#f8fafc;text-align:center;border-
 <section id="adminDash" class="section"><div class="card"><h2>管理者ダッシュボード</h2><p id="adminInfo"></p><div class="tabs"><button onclick="adminDash()">ダッシュボード</button><button onclick="adminStudents()">学生管理</button><button onclick="adminStudentForm()">学生情報登録</button><button onclick="adminCompanies()">企業管理</button><button onclick="adminCompanyForm()">企業情報登録</button><button onclick="adminCompanies()">企業承認管理</button><button onclick="adminJobForm()">求人掲載</button><button onclick="adminJobs()">求人管理</button><button onclick="adminApps()">応募管理</button><button onclick="adminNoticeForm()">お知らせ投稿</button><button onclick="requestPushNotificationPermission()">Push通知テスト</button></div><div id="adminContent"></div></div></section>
 </main><div id="modal" class="modal"><div class="modal-panel"><button class="gray" onclick="closeModal()">閉じる</button><div id="modalContent"></div></div></div>
 <div class="pwa-install-bar">
-  <button id="installAppBtn" class="blue" style="display:none;">📱 ホーム画面に追加</button>
+  <button id="installAppBtn" class="blue">📱 アプリをインストール / ホーム画面に追加</button>
 </div>
 <nav class="mobile-bottom-nav">
   <button onclick="show('home')"><span class="nav-icon">🏠</span>ホーム</button>
@@ -120,7 +140,7 @@ footer{margin-top:28px;padding:12px;background:#f8fafc;text-align:center;border-
 <div id="installHelpModal" class="install-help">
   <div class="install-help-panel">
     <button class="gray" onclick="closeInstallHelp()">閉じる</button>
-    <h2>スマホアプリとして使う方法</h2>
+    <h2>アプリとして使う方法</h2><h3>パソコンの場合</h3><p>Chrome または Edge のアドレスバー右側に表示される「インストール」アイコンをクリックしてください。表示されない場合は、右上メニューから「アプリをインストール」を選択してください。</p>
     <h3>iPhoneの場合</h3><p>Safariで開き、共有ボタンから「ホーム画面に追加」を選択してください。</p>
     <h3>Androidの場合</h3><p>Chromeで開き、メニューから「アプリをインストール」を選択してください。</p>
     <p class="alert info">ホーム画面の「SOLA CAREER」アイコンから直接開けます。</p>
