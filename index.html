@@ -93,6 +93,22 @@ footer{margin-top:28px;padding:12px;background:#f8fafc;text-align:center;border-
 .v34-note{color:#64748b;font-size:12px;line-height:1.6}
 .v34-photo-preview{max-width:110px;max-height:140px;border-radius:8px;border:1px solid #e5e7eb;background:#fff}
 
+
+/* ===== V3.4.1 My Page / Draft Save ===== */
+.draft-status{
+  display:inline-block;
+  margin-left:8px;
+  padding:4px 8px;
+  border-radius:999px;
+  background:#fef9c3;
+  color:#854d0e;
+  font-size:12px;
+  font-weight:900;
+}
+@media(max-width:760px){
+  #myPageBtn{display:inline-block}
+}
+
 </style>
 <!-- PWA V3.2 -->
 <link rel="manifest" href="/manifest.json">
@@ -106,7 +122,8 @@ footer{margin-top:28px;padding:12px;background:#f8fafc;text-align:center;border-
 <header>
   <div class="logo">SOLA <span>CAREER CENTER</span></div>
   <span id="userStateBadge" class="user-state-badge desktop-only">未ログイン</span>
-  <button class="secondary desktop-only" onclick="show('home')">ホーム</button>
+  <button class="secondary" onclick="show('home')">ホーム</button>
+  <button id="myPageBtn" class="secondary" style="display:none" onclick="goMyPage()">マイページ</button>
   <button class="secondary desktop-only" onclick="showJobs('dispatch')">人材派遣</button>
   <button class="secondary desktop-only" onclick="showJobs('career')">就職支援</button>
   <button id="loginSmartBtn" class="secondary" onclick="openLoginChoice()">ログイン</button>
@@ -156,10 +173,10 @@ footer{margin-top:28px;padding:12px;background:#f8fafc;text-align:center;border-
 </div>
 
 <footer>
-  <div style="font-weight:900;margin-bottom:4px;">SOLA CAREER CENTER</div>
-  <div>学校法人SOLA学園 キャリアセンター</div>
+  <div style="font-weight:900;margin-bottom:4px;">学校法人SOLA学園 キャリアセンター</div>
+  <div>留学生就職・アルバイト支援プラットフォーム</div>
   <div>プラットフォーム管理責任者：丁 超亜（テイ チョウア）</div>
-  <div style="margin-top:4px;color:#64748b;">© 2026 SOLA CAREER CENTER</div>
+  <div style="margin-top:4px;color:#64748b;">© 2026 SOLA学園</div>
 </footer>
 <script>
 
@@ -436,5 +453,156 @@ const _v34_adminCompanyForm=adminCompanyForm;adminCompanyForm=function(){_v34_ad
 const _v34_adminJobForm=adminJobForm;adminJobForm=async function(){await _v34_adminJobForm();addAdminBack()}
 if(typeof adminNoticeForm==='function'){const _v34_adminNoticeForm=adminNoticeForm;adminNoticeForm=function(){_v34_adminNoticeForm();addAdminBack()}}
 window.saveStudentResumeV34=saveStudentResumeV34;window.previewStudentResumeV34=previewStudentResumeV34;window.printResumeV34=printResumeV34;window.downloadResumeWordV34=downloadResumeWordV34;window.companySaveJobV34=companySaveJobV34;
+
+
+
+/* ===== V3.4.1 ホーム・マイページ・下書き保存 ===== */
+function goMyPage(){
+  if(!currentProfile){
+    openLoginChoice();
+    return;
+  }
+  if(currentProfile.role === 'student'){
+    show('studentDash');
+    studentDash();
+    return;
+  }
+  if(currentProfile.role === 'company'){
+    show('companyDash');
+    companyDash();
+    return;
+  }
+  if(currentProfile.role === 'admin'){
+    show('adminDash');
+    adminDash();
+    return;
+  }
+  show('home');
+}
+window.goMyPage = goMyPage;
+
+function updateLoginState(){
+  const badge = document.getElementById('userStateBadge');
+  const loginBtn = document.getElementById('loginSmartBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const myPageBtn = document.getElementById('myPageBtn');
+
+  let label = '未ログイン';
+  let myLabel = 'マイページ';
+
+  if(currentProfile?.role === 'student'){
+    label = '学生ログイン中';
+    myLabel = '学生マイページ';
+  }
+  if(currentProfile?.role === 'company'){
+    label = '企業ログイン中';
+    myLabel = '企業マイページ';
+  }
+  if(currentProfile?.role === 'admin'){
+    label = '管理者ログイン中';
+    myLabel = '管理者マイページ';
+  }
+
+  if(badge) badge.textContent = label;
+  if(loginBtn) loginBtn.style.display = currentProfile ? 'none' : 'inline-block';
+  if(logoutBtn) logoutBtn.style.display = currentProfile ? 'inline-block' : 'none';
+  if(myPageBtn){
+    myPageBtn.style.display = currentProfile ? 'inline-block' : 'none';
+    myPageBtn.textContent = myLabel;
+  }
+}
+
+/* 学生履歴書：下書き保存 */
+async function saveStudentResumeDraftV341(){
+  try{
+    const id = await sid();
+    const data = collectStudentResumeV34 ? collectStudentResumeV34() : {};
+    data.resume_status = '作成中';
+
+    if(document.getElementById('rsResumeFile')?.files?.[0]){
+      data.resume_attachment_url = await upload('rsResumeFile', 'student-resumes', data.email || data.name || id);
+      data.resume_attachment_flag = 'あり';
+    }
+    if(document.getElementById('rsPhotoFile')?.files?.[0]){
+      data.photo_url = await upload('rsPhotoFile', 'student-photos', data.email || data.name || id);
+    }
+
+    const r = await sb.from('students').update(data).eq('id', id);
+    if(r.error) throw r.error;
+
+    const box = document.getElementById('resumeBox');
+    if(box) box.innerHTML = '<div class="alert ok">下書きを保存しました。次回ログイン後も続きから入力できます。</div>';
+  }catch(e){
+    alert('下書き保存エラー：' + e.message);
+  }
+}
+window.saveStudentResumeDraftV341 = saveStudentResumeDraftV341;
+
+/* 学生履歴書画面に下書きボタンを追加 */
+const _v341_studentResume = studentResume;
+studentResume = async function(){
+  await _v341_studentResume();
+  const actions = document.querySelector('#studentContent .actions');
+  if(actions && !document.getElementById('studentDraftBtn')){
+    actions.insertAdjacentHTML('afterbegin', '<button id="studentDraftBtn" class="yellow" onclick="saveStudentResumeDraftV341()">下書き保存</button>');
+  }
+};
+
+/* 企業求人：入力値取得 */
+function collectCompanyJobV341(activeFlag){
+  const q = Number(v('cjquota') || 1);
+  return {
+    job_type: v('cjtype') || '未入力職種',
+    work_content: v('cjwork'),
+    work_place: v('cjplace'),
+    pay: v('cjpay'),
+    work_time: v('cjtime'),
+    work_days: v('cjdays'),
+    requirements: v('cjrequirements'),
+    foreigner_ok: v('cjForeign'),
+    japanese_level: v('cjJapanese'),
+    note: v('cjNote'),
+    quota: q,
+    remaining_quota: q,
+    active: activeFlag
+  };
+}
+
+/* 企業求人：下書き保存 */
+async function companySaveJobDraftV341(){
+  try{
+    const id = await cid();
+    const comp = await sb.from('companies').select('*').eq('id', id).single();
+    const payload = collectCompanyJobV341(false);
+    payload.company_id = id;
+    payload.company = comp.data.company_name || '未入力企業';
+    payload.company_website_url = comp.data.website_url || '';
+
+    const table = v('cjkind') === 'career' ? 'career_jobs' : 'dispatch_jobs';
+    const r = await sb.from(table).insert(payload);
+    if(r.error) throw r.error;
+
+    alert('求人の下書きを保存しました。');
+    companyJobs();
+  }catch(e){
+    alert('下書き保存エラー：' + e.message);
+  }
+}
+window.companySaveJobDraftV341 = companySaveJobDraftV341;
+
+/* 企業求人画面に下書きボタンを追加 */
+const _v341_companyJobForm = companyJobForm;
+companyJobForm = function(){
+  _v341_companyJobForm();
+  const btn = document.querySelector('#companyContent button[onclick="companySaveJobV34()"]');
+  if(btn && !document.getElementById('companyDraftBtn')){
+    btn.insertAdjacentHTML('beforebegin', '<button id="companyDraftBtn" class="yellow" onclick="companySaveJobDraftV341()">下書き保存</button>');
+  }
+};
+
+/* 管理者・学生・企業の戻り導線を明確化 */
+document.addEventListener('DOMContentLoaded', () => {
+  updateLoginState();
+});
 
 </script></body></html>
