@@ -85,6 +85,14 @@ footer{margin-top:28px;padding:12px;background:#f8fafc;text-align:center;border-
   }
 }
 
+
+/* ===== V3.4 Complete Upgrade ===== */
+.v34-back{display:inline-block;margin:0 0 12px;background:#f1f5f9!important;color:#334155!important}
+.v34-upload-box{background:#f8fafc;border:1px dashed #94a3b8;border-radius:14px;padding:12px;margin:10px 0}
+.v34-section-title{margin-top:18px;padding-left:10px;border-left:5px solid #32c904;font-size:18px}
+.v34-note{color:#64748b;font-size:12px;line-height:1.6}
+.v34-photo-preview{max-width:110px;max-height:140px;border-radius:8px;border:1px solid #e5e7eb;background:#fff}
+
 </style>
 <!-- PWA V3.2 -->
 <link rel="manifest" href="/manifest.json">
@@ -147,7 +155,12 @@ footer{margin-top:28px;padding:12px;background:#f8fafc;text-align:center;border-
   </div>
 </div>
 
-<footer>情報発信元：学校法人SOLA学園 キャリアセンター</footer>
+<footer>
+  <div style="font-weight:900;margin-bottom:4px;">SOLA CAREER CENTER</div>
+  <div>学校法人SOLA学園 キャリアセンター</div>
+  <div>プラットフォーム管理責任者：丁 超亜（テイ チョウア）</div>
+  <div style="margin-top:4px;color:#64748b;">© 2026 SOLA CAREER CENTER</div>
+</footer>
 <script>
 
 const SUPABASE_URL='https://yhwdmlvzzrnvnnxapsfr.supabase.co',SUPABASE_ANON_KEY='sb_publishable_8ZhlfQc5zqU6xNEFduzymA__aBsJyzf';
@@ -351,5 +364,77 @@ document.addEventListener('DOMContentLoaded',()=>{
   const btn=document.getElementById('installAppBtn');
   if(btn){btn.style.display='inline-block'; btn.addEventListener('click',()=>{if(!deferredInstallPrompt)openInstallHelp()})}
 });
+
+
+
+/* ===== V3.4 正式運用版：学生・企業・管理者 完善 ===== */
+function v34BackStudent(){return '<button class="v34-back" onclick="studentDash()">← 学生マイページへ戻る</button>'}
+function v34BackCompany(){return '<button class="v34-back" onclick="companyDash()">← 企業マイページへ戻る</button>'}
+function v34BackAdmin(){return '<button class="v34-back" onclick="adminDash()">← 管理者マイページへ戻る</button>'}
+function v34FileLink(url,label){return url?'<a class="link" target="_blank" href="'+esc(url)+'">'+esc(label)+'</a>':'<span class="status pending">未登録</span>'}
+async function v34UploadFile(id,folder,base){const i=document.getElementById(id);if(!i||!i.files||!i.files[0])return '';return await upload(id,folder,base||'file')}
+
+async function studentResume(){
+  const id=await sid(); const r=await sb.from('students').select('*').eq('id',id).maybeSingle(); const s=r.data||{};
+  studentContent.innerHTML = v34BackStudent()+
+  '<h3>履歴書作成・登録</h3><div class="alert info">空白があっても保存できます。入力できる項目から登録してください。</div>'+
+  '<h4 class="v34-section-title">基本情報</h4>'+
+  '<div class="row"><div><label>氏名</label><input id="rsName" value="'+esc(s.name||currentProfile.name||'')+'"></div><div><label>フリガナ</label><input id="rsFurigana" value="'+esc(s.furigana||'')+'"></div></div>'+
+  '<div class="row"><div><label>生年月日</label><input id="rsBirthday" value="'+esc(s.birthday||'')+'"></div><div><label>性別</label><select id="rsGender"><option value=""></option><option>男性</option><option>女性</option><option>その他</option></select></div></div>'+
+  '<div class="row"><div><label>電話番号</label><input id="rsTel" value="'+esc(s.tel||'')+'"></div><div><label>メールアドレス</label><input id="rsEmail" value="'+esc(s.email||currentProfile.email||'')+'"></div></div>'+
+  '<div class="row"><div><label>郵便番号</label><input id="rsPostcode" value="'+esc(s.postcode||'')+'"></div><div><label>国籍</label><input id="rsNationality" value="'+esc(s.nationality||'')+'"></div></div>'+
+  '<label>住所</label><input id="rsAddress" value="'+esc(s.address||'')+'"><label>住所フリガナ</label><input id="rsAddressKana" value="'+esc(s.address_kana||'')+'">'+
+  '<h4 class="v34-section-title">学歴</h4>'+
+  '<label>母国最終学歴</label><input id="rsHomeEducation" value="'+esc(s.home_education||'')+'">'+
+  '<div class="row"><div><label>日本語学校</label><input id="rsJapaneseSchool" value="'+esc(s.japanese_school||'')+'"></div><div><label>専門学校・学科</label><input id="rsSchoolClass" value="'+esc(s.class_name||'')+'"></div></div>'+
+  '<div class="row"><div><label>入学年月</label><input id="rsEntranceDate" value="'+esc(s.entrance_date||'')+'"></div><div><label>卒業予定年月</label><input id="rsGraduationDate" value="'+esc(s.graduation_date||'')+'"></div></div>'+
+  '<h4 class="v34-section-title">資格・スキル</h4>'+
+  '<div class="row"><div><label>JLPT</label><input id="rsJlpt" value="'+esc(s.jlpt||'')+'"></div><div><label>TOEIC・英語力</label><input id="rsEnglish" value="'+esc(s.english_skill||'')+'"></div></div>'+
+  '<div class="row"><div><label>普通免許</label><input id="rsLicense" value="'+esc(s.license||'')+'"></div><div><label>特定技能・その他資格</label><input id="rsOtherCert" value="'+esc(s.other_certificates||'')+'"></div></div>'+
+  '<label>PCスキル・その他スキル</label><textarea id="rsSkills">'+esc(s.skills||'')+'</textarea>'+
+  '<h4 class="v34-section-title">職歴・アルバイト経験</h4>'+
+  '<label>アルバイト・職歴①</label><textarea id="rsWork1">'+esc(s.work_history_1||'')+'</textarea>'+
+  '<label>アルバイト・職歴②</label><textarea id="rsWork2">'+esc(s.work_history_2||'')+'</textarea>'+
+  '<label>アルバイト・職歴③</label><textarea id="rsWork3">'+esc(s.work_history_3||'')+'</textarea>'+
+  '<h4 class="v34-section-title">志望内容・自己PR</h4>'+
+  '<label>志望動機</label><textarea id="rsMotivation">'+esc(s.motivation||'')+'</textarea>'+
+  '<label>特技</label><textarea id="rsSpecialSkill">'+esc(s.special_skill||'')+'</textarea>'+
+  '<label>好きな学科</label><textarea id="rsFavoriteSubject">'+esc(s.favorite_subject||'')+'</textarea>'+
+  '<label>アピールポイント</label><textarea id="rsSelfPr">'+esc(s.self_pr||'')+'</textarea>'+
+  '<h4 class="v34-section-title">希望条件</h4>'+
+  '<div class="row"><div><label>希望職種</label><input id="rsDesiredJob" value="'+esc(s.desired_job||'')+'"></div><div><label>希望勤務地</label><input id="rsDesiredPlace" value="'+esc(s.desired_place||'')+'"></div></div>'+
+  '<label>希望勤務時間</label><input id="rsDesiredTime" value="'+esc(s.desired_time||'')+'"><label>履歴書完成状況</label><select id="rsResumeStatus"><option>未作成</option><option>作成中</option><option>完成</option></select>'+
+  '<h4 class="v34-section-title">添付ファイル</h4>'+
+  '<div class="v34-upload-box"><label>履歴書ファイル（PDF / Word）</label><input id="rsResumeFile" type="file" accept=".pdf,.doc,.docx"><div class="v34-note">未アップロードでも保存できます。</div><div>現在：'+v34FileLink(s.resume_attachment_url,'履歴書を見る')+'</div></div>'+
+  '<div class="v34-upload-box"><label>証明写真（JPG / PNG）</label><input id="rsPhotoFile" type="file" accept=".jpg,.jpeg,.png,image/*"><div class="v34-note">未アップロードでも保存できます。</div><div>現在：'+(s.photo_url?'<br><img src="'+esc(s.photo_url)+'" class="v34-photo-preview">':'<span class="status pending">未登録</span>')+'</div></div>'+
+  '<div class="actions"><button onclick="saveStudentResumeV34()">保存する</button><button class="secondary" onclick="previewStudentResumeV34()">プレビュー</button><button class="secondary" onclick="printResumeV34()">PDF印刷</button><button class="secondary" onclick="downloadResumeWordV34()">Word保存</button></div><div id="resumeBox"></div>';
+  if(s.gender) document.getElementById('rsGender').value=s.gender;
+  if(s.resume_status) document.getElementById('rsResumeStatus').value=s.resume_status;
+}
+function collectStudentResumeV34(){
+  return {name:v('rsName'),furigana:v('rsFurigana'),birthday:v('rsBirthday'),gender:v('rsGender'),tel:v('rsTel'),email:v('rsEmail')||currentProfile.email,postcode:v('rsPostcode'),nationality:v('rsNationality'),address:v('rsAddress'),address_kana:v('rsAddressKana'),home_education:v('rsHomeEducation'),japanese_school:v('rsJapaneseSchool'),class_name:v('rsSchoolClass'),entrance_date:v('rsEntranceDate'),graduation_date:v('rsGraduationDate'),jlpt:v('rsJlpt'),english_skill:v('rsEnglish'),license:v('rsLicense'),other_certificates:v('rsOtherCert'),skills:v('rsSkills'),work_history_1:v('rsWork1'),work_history_2:v('rsWork2'),work_history_3:v('rsWork3'),motivation:v('rsMotivation'),special_skill:v('rsSpecialSkill'),favorite_subject:v('rsFavoriteSubject'),self_pr:v('rsSelfPr'),desired_job:v('rsDesiredJob'),desired_place:v('rsDesiredPlace'),desired_time:v('rsDesiredTime'),resume_status:v('rsResumeStatus')}
+}
+async function saveStudentResumeV34(){
+  try{const id=await sid();const data=collectStudentResumeV34();if(document.getElementById('rsResumeFile')?.files?.[0]){data.resume_attachment_url=await upload('rsResumeFile','student-resumes',data.email||data.name||id);data.resume_attachment_flag='あり'}if(document.getElementById('rsPhotoFile')?.files?.[0]){data.photo_url=await upload('rsPhotoFile','student-photos',data.email||data.name||id)}const r=await sb.from('students').update(data).eq('id',id);if(r.error)throw r.error;alert('保存しました。');studentResume()}catch(e){alert('保存エラー：'+e.message+'\\nStorage の photos bucket が Public か確認してください。')}}
+function resumeHtmlV34(d){return '<div id="resumePrintArea" class="resume"><h1>履歴書</h1><table><tr><th>氏名</th><td>'+esc(d.name)+'</td><th>フリガナ</th><td>'+esc(d.furigana)+'</td></tr><tr><th>生年月日</th><td>'+esc(d.birthday)+'</td><th>性別</th><td>'+esc(d.gender)+'</td></tr><tr><th>電話</th><td>'+esc(d.tel)+'</td><th>メール</th><td>'+esc(d.email)+'</td></tr><tr><th>住所</th><td colspan="3">'+esc(d.postcode)+' '+esc(d.address)+'<br>'+esc(d.address_kana)+'</td></tr><tr><th>学歴</th><td colspan="3">'+esc(d.home_education)+'<br>'+esc(d.japanese_school)+'<br>'+esc(d.class_name)+'</td></tr><tr><th>資格</th><td colspan="3">JLPT：'+esc(d.jlpt)+'<br>英語：'+esc(d.english_skill)+'<br>その他：'+esc(d.other_certificates)+'</td></tr><tr><th>職歴</th><td colspan="3" style="white-space:pre-line">'+esc(d.work_history_1+"\\n"+d.work_history_2+"\\n"+d.work_history_3)+'</td></tr><tr><th>志望動機</th><td colspan="3" style="white-space:pre-line">'+esc(d.motivation)+'</td></tr><tr><th>自己PR</th><td colspan="3" style="white-space:pre-line">'+esc(d.self_pr)+'</td></tr><tr><th>希望条件</th><td colspan="3">'+esc(d.desired_job)+' / '+esc(d.desired_place)+' / '+esc(d.desired_time)+'</td></tr></table></div>'}
+function previewStudentResumeV34(){document.getElementById('resumeBox').innerHTML=resumeHtmlV34(collectStudentResumeV34())}
+function printResumeV34(){previewStudentResumeV34();setTimeout(()=>window.print(),300)}
+function downloadResumeWordV34(){const d=collectStudentResumeV34();const blob=new Blob(['<html><head><meta charset="UTF-8"></head><body>'+resumeHtmlV34(d)+'</body></html>'],{type:'application/msword'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=(d.name||'resume')+'_履歴書.doc';a.click();URL.revokeObjectURL(url)}
+
+function companyJobForm(){
+  companyContent.innerHTML=v34BackCompany()+'<h3>求人掲載</h3><div class="alert info">空白があっても保存できます。入力できる項目から登録してください。</div><label>求人区分</label><select id="cjkind"><option value="dispatch">人材派遣・アルバイト</option><option value="career">就職支援</option></select><div class="row"><div><label>募集職種</label><input id="cjtype"></div><div><label>募集人数</label><input id="cjquota" type="number" value="1"></div></div><label>仕事内容</label><textarea id="cjwork"></textarea><div class="row"><div><label>勤務地</label><input id="cjplace"></div><div><label>給与</label><input id="cjpay"></div></div><div class="row"><div><label>勤務時間</label><input id="cjtime" placeholder="例：9:00～18:00 / 17:00～22:00"></div><div><label>出勤日・曜日</label><input id="cjdays" placeholder="例：週3日～ / 土日勤務あり"></div></div><label>応募条件</label><textarea id="cjrequirements" placeholder="例：未経験可、日本語で簡単な会話ができる方"></textarea><div class="row"><div><label>外国人応募</label><select id="cjForeign"><option value=""></option><option>可</option><option>相談</option><option>不可</option></select></div><div><label>日本語レベル</label><select id="cjJapanese"><option value=""></option><option>不問</option><option>N5以上</option><option>N4以上</option><option>N3以上</option><option>N2以上</option></select></div></div><label>その他備考</label><textarea id="cjNote"></textarea><button onclick="companySaveJobV34()">求人を掲載する</button>'
+}
+async function companySaveJobV34(){try{const id=await cid();const comp=await sb.from('companies').select('*').eq('id',id).single();const q=Number(v('cjquota')||1);const payload={company_id:id,company:comp.data.company_name||'未入力企業',job_type:v('cjtype')||'未入力職種',work_content:v('cjwork'),work_place:v('cjplace'),pay:v('cjpay'),work_time:v('cjtime'),work_days:v('cjdays'),requirements:v('cjrequirements'),foreigner_ok:v('cjForeign'),japanese_level:v('cjJapanese'),note:v('cjNote'),quota:q,remaining_quota:q,active:true,company_website_url:comp.data.website_url||''};const r=await sb.from(v('cjkind')==='career'?'career_jobs':'dispatch_jobs').insert(payload);if(r.error)throw r.error;alert('求人を掲載しました。');companyJobs()}catch(e){alert('求人掲載エラー：'+e.message)}}
+
+function addAdminBack(){const box=document.getElementById('adminContent');if(box&&!box.querySelector('.v34-back'))box.insertAdjacentHTML('afterbegin',v34BackAdmin())}
+const _v34_adminStudents=adminStudents;adminStudents=async function(){await _v34_adminStudents();addAdminBack()}
+const _v34_adminCompanies=adminCompanies;adminCompanies=async function(filter){await _v34_adminCompanies(filter);addAdminBack()}
+const _v34_adminJobs=adminJobs;adminJobs=async function(){await _v34_adminJobs();addAdminBack()}
+const _v34_adminApps=adminApps;adminApps=async function(){await _v34_adminApps();addAdminBack()}
+const _v34_adminStudentForm=adminStudentForm;adminStudentForm=function(){_v34_adminStudentForm();addAdminBack()}
+const _v34_adminCompanyForm=adminCompanyForm;adminCompanyForm=function(){_v34_adminCompanyForm();addAdminBack()}
+const _v34_adminJobForm=adminJobForm;adminJobForm=async function(){await _v34_adminJobForm();addAdminBack()}
+if(typeof adminNoticeForm==='function'){const _v34_adminNoticeForm=adminNoticeForm;adminNoticeForm=function(){_v34_adminNoticeForm();addAdminBack()}}
+window.saveStudentResumeV34=saveStudentResumeV34;window.previewStudentResumeV34=previewStudentResumeV34;window.printResumeV34=printResumeV34;window.downloadResumeWordV34=downloadResumeWordV34;window.companySaveJobV34=companySaveJobV34;
 
 </script></body></html>
