@@ -188,7 +188,7 @@ async function enablePushNotifications(){
   try{
     if(!('Notification' in window)) return alert('この端末は通知に対応していません。');
     if(!('serviceWorker' in navigator)) return alert('このブラウザはService Workerに対応していません。');
-    if(VAPID_PUBLIC_KEY==='REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY') return alert('VAPID公開鍵が未設定です。先に index.html の VAPID_PUBLIC_KEY を設定してください。');
+    if(VAPID_PUBLIC_KEY==='const VAPID_PUBLIC_KEY="BDTnl6NMvZOXtsiM6iOAQ0AoF7pEWg0JgyB5w83xu8Ah8Kue43oFZxrStHfInp5QNHgIp24p7dK-Z5TxqVVQFDg"') return alert('VAPID公開鍵が未設定です。先に index.html の VAPID_PUBLIC_KEY を設定してください。');
     const permission=await Notification.requestPermission();
     if(permission!=='granted') return alert('通知が許可されていません。');
     const reg=await navigator.serviceWorker.ready;
