@@ -426,7 +426,9 @@ async function sendPushFromAdmin() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'Push送信に失敗しました。');
-    alert('Push通知を送信しました。\n対象：' + (mode === 'individual' ? target_email : target_role) + '\n送信件数：' + (data.sent||0) + '\n失敗件数：' + (data.failed||0));
+    const skipped = data.skipped || 0;
+    const skipMsg = skipped > 0 ? `\nスキップ（未登録端末）：${skipped}` : '';
+    alert('Push通知を送信しました。\n対象：' + (mode === 'individual' ? target_email : target_role) + '\n送信件数：' + (data.sent||0) + '\n失敗件数：' + (data.failed||0) + skipMsg);
   } catch(e) {
     alert('Push送信エラー：' + e.message);
   }
