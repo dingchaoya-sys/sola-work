@@ -215,7 +215,14 @@ function esc(x){return String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&l
 function urlBase64ToUint8Array(base64String){const padding='='.repeat((4-base64String.length%4)%4);const base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');const rawData=atob(base64);const outputArray=new Uint8Array(rawData.length);for(let i=0;i<rawData.length;++i)outputArray[i]=rawData.charCodeAt(i);return outputArray}
 function okpass(p){return /[A-Za-z]/.test(p)&&/[0-9]/.test(p)&&p.length>=8}
 function msg(t,c='ok'){const el=document.getElementById('loginMsg')||document.getElementById('authMsg');if(el)el.innerHTML='<div class="alert '+c+'">'+esc(t)+'</div>'}
-function openModal(t,b){modalContent.innerHTML='<h2>'+esc(t)+'</h2><p style="white-space:pre-line;line-height:1.8">'+esc(b||'')+'</p>';modal.classList.add('on')}
+function openModal(t,b,imgUrl,fileUrl,fileLabel){
+  let html='<h2>'+esc(t)+'</h2>';
+  if(imgUrl) html+=`<img src="${esc(imgUrl)}" style="width:100%;border-radius:12px;margin:10px 0;display:block">`;
+  html+=`<p style="white-space:pre-line;line-height:1.8">${esc(b||'')}</p>`;
+  if(fileUrl) html+=`<a class="link" href="${esc(fileUrl)}" target="_blank" style="margin-top:8px;display:inline-block">📎 ${esc(fileLabel||'添付ファイルを開く')}</a>`;
+  modalContent.innerHTML=html;
+  modal.classList.add('on');
+}
 function closeModal(){modal.classList.remove('on')}
 function openInstallGuide(){installModal.classList.add('on')}
 function closeInstallGuide(){installModal.classList.remove('on')}
@@ -277,17 +284,111 @@ async function upload(id,folder,base){const input=document.getElementById(id);if
 
 /* ===== 求人カード ===== */
 function jobCard(j,k,apply=false,manage=false){
-  let h='<div class="job"><span class="link">'+(k==='career'?'就職':'派遣')+'</span><h3>'+esc(j.company)+'</h3><p><b>'+esc(j.job_type)+'</b></p><p>'+esc(j.work_place)+' / '+esc(j.pay)+' / '+esc(j.work_time||'')+'</p><p>'+esc(j.work_content||'')+'</p><button class="secondary" onclick="openModal(\''+esc(j.company).replace(/'/g,'&#39;')+'｜'+esc(j.job_type).replace(/'/g,'&#39;')+'\',\''+esc((j.work_content||'')+'\\n勤務時間：'+(j.work_time||'')+'\\n応募条件：'+(j.requirements||'')+'\\n外国人応募：'+(j.foreigner_ok||'')+'\\n日本語：'+(j.japanese_level||'')).replace(/'/g,'&#39;')+'\')">詳細</button>';
-  if(apply)h+='<button onclick="applyJob(\''+k+'\',\''+j.id+'\')">応募する</button><button class="favorite-btn" onclick="toggleJobFavorite(\''+k+'\',\''+j.id+'\')">★ お気に入り</button>';
-  if(manage)h+='<button class="red" onclick="deleteJob(\''+k+'\',\''+j.id+'\')">削除</button>';
-  return h+'</div>'
+  const detailBody=`仕事内容：${j.work_content||''}\n勤務時間：${j.work_time||''}\n勤務地：${j.work_place||''}\n給与：${j.pay||''}\n応募条件：${j.requirements||''}\n外国人応募：${j.foreigner_ok||''}\n日本語：${j.japanese_level||''}\n備考：${j.note||''}`;
+  const imgArg=j.image_url?`,'${esc(j.image_url)}'`:'';
+  const fileArg=j.file_url?`,'${esc(j.file_url)}','${esc(j.file_label||'添付ファイル')}'`:'';
+  let h=`<div class="job"><span class="link">${k==='career'?'就職':'派遣'}</span><h3>${esc(j.company)}</h3><p><b>${esc(j.job_type)}</b></p><p>${esc(j.work_place)} / ${esc(j.pay)} / ${esc(j.work_time||'')}</p>`;
+  if(j.image_url) h+=`<img src="${esc(j.image_url)}" style="width:100%;border-radius:10px;margin:8px 0;max-height:200px;object-fit:cover">`;
+  h+=`<p>${esc((j.work_content||'').slice(0,80))}${(j.work_content||'').length>80?'…':''}</p>`;
+  h+=`<button class="secondary" onclick="openModal('${esc(j.company+'｜'+j.job_type).replace(/'/g,"\\'")}','${esc(detailBody).replace(/'/g,"\\'")}',${j.image_url?`'${esc(j.image_url)}'`:'null'},${j.file_url?`'${esc(j.file_url)}'`:'null'},${j.file_url?`'${esc(j.file_label||'添付ファイル')}'`:'null'})">詳細を見る</button>`;
+  if(apply)h+=`<button onclick="applyJob('${k}','${j.id}')">応募する</button><button class="favorite-btn" onclick="toggleJobFavorite('${k}','${j.id}')">★ お気に入り</button>`;
+  if(manage)h+=`<button class="secondary" onclick="showEditJobForm('${k}','${j.id}')">編集</button><button class="red" onclick="deleteJob('${k}','${j.id}')">削除</button>`;
+  return h+'</div>';
 }
-async function showJobs(k){showPage('jobsPage');jobsTitle.textContent=k==='career'?'就職支援求人':'人材派遣求人';const r=await sb.from(k==='career'?'career_jobs':'dispatch_jobs').select('*').eq('active',true).order('created_at',{ascending:false});jobsList.innerHTML=(r.data||[]).map(j=>jobCard(j,k,currentProfile?.role==='student')).join('')||'求人はありません'}
+async function showJobs(k){
+  showPage('jobsPage');
+  jobsTitle.textContent=k==='career'?'就職支援求人':'人材派遣求人';
+  const r=await sb.from(k==='career'?'career_jobs':'dispatch_jobs').select('*').eq('active',true).order('created_at',{ascending:false});
+  jobsList.innerHTML=(r.data||[]).map(j=>jobCard(j,k,currentProfile?.role==='student')).join('')||'求人はありません';
+}
+
+/* 求人編集フォーム */
+async function showEditJobForm(k,id){
+  const tab=k==='career'?'career_jobs':'dispatch_jobs';
+  const r=await sb.from(tab).select('*').eq('id',id).maybeSingle();
+  const j=r.data;if(!j)return alert('求人情報が見つかりません。');
+  modalContent.innerHTML=`
+    <h2>求人を編集</h2>
+    <label>募集職種</label><input id="ej_type" value="${esc(j.job_type||'')}">
+    <label>仕事内容</label><textarea id="ej_work">${esc(j.work_content||'')}</textarea>
+    <div class="row"><div><label>勤務地</label><input id="ej_place" value="${esc(j.work_place||'')}"></div><div><label>給与</label><input id="ej_pay" value="${esc(j.pay||'')}"></div></div>
+    <div class="row"><div><label>勤務時間</label><input id="ej_time" value="${esc(j.work_time||'')}"></div><div><label>外国人応募</label><select id="ej_foreign"><option></option><option>可</option><option>相談</option><option>不可</option></select></div></div>
+    <label>日本語レベル</label><select id="ej_japanese"><option></option><option>不問</option><option>N5以上</option><option>N4以上</option><option>N3以上</option><option>N2以上</option></select>
+    <label>応募条件</label><textarea id="ej_req">${esc(j.requirements||'')}</textarea>
+    <label>備考</label><textarea id="ej_note">${esc(j.note||'')}</textarea>
+    <div class="upload-box">
+      <label>画像（海報・チラシなど）</label>
+      <input id="ej_img" type="file" accept="image/*">
+      ${j.image_url?`<div>現在：<img src="${esc(j.image_url)}" style="max-height:80px;border-radius:8px;vertical-align:middle;margin-left:8px"></div>`:''}
+    </div>
+    <div class="upload-box">
+      <label>添付ファイル（PDF等）</label>
+      <input id="ej_file" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+      ${j.file_url?`<div>現在：<a class="link" href="${esc(j.file_url)}" target="_blank">${esc(j.file_label||'添付ファイル')}</a></div>`:''}
+    </div>
+    <label>公開状態</label>
+    <select id="ej_active"><option value="true">公開</option><option value="false">非公開</option></select>
+    <div class="actions" style="margin-top:14px">
+      <button onclick="saveEditJob('${k}','${id}')">更新する</button>
+      <button class="gray" onclick="closeModal()">キャンセル</button>
+    </div>`;
+  if(j.foreigner_ok){const s=document.getElementById('ej_foreign');if(s)s.value=j.foreigner_ok;}
+  if(j.japanese_level){const s=document.getElementById('ej_japanese');if(s)s.value=j.japanese_level;}
+  const as=document.getElementById('ej_active');if(as)as.value=String(j.active!==false);
+  modal.classList.add('on');
+}
+async function saveEditJob(k,id){
+  try{
+    const tab=k==='career'?'career_jobs':'dispatch_jobs';
+    const data={job_type:v('ej_type'),work_content:v('ej_work'),work_place:v('ej_place'),pay:v('ej_pay'),work_time:v('ej_time'),foreigner_ok:v('ej_foreign'),japanese_level:v('ej_japanese'),requirements:v('ej_req'),note:v('ej_note'),active:v('ej_active')==='true'};
+    const imgFile=document.getElementById('ej_img')?.files?.[0];
+    if(imgFile){const path='job-images/'+k+'_'+id+'_'+Date.now()+'_'+imgFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');const up=await sb.storage.from('photos').upload(path,imgFile,{upsert:true});if(up.error)throw up.error;data.image_url=sb.storage.from('photos').getPublicUrl(path).data.publicUrl;}
+    const fileEl=document.getElementById('ej_file')?.files?.[0];
+    if(fileEl){const path='job-files/'+k+'_'+id+'_'+Date.now()+'_'+fileEl.name.replace(/[^a-zA-Z0-9._-]/g,'_');const up=await sb.storage.from('photos').upload(path,fileEl,{upsert:true});if(up.error)throw up.error;data.file_url=sb.storage.from('photos').getPublicUrl(path).data.publicUrl;data.file_label=fileEl.name;}
+    const r=await sb.from(tab).update(data).eq('id',id);
+    if(r.error)throw r.error;
+    closeModal();
+    alert('求人情報を更新しました。');
+    if(currentProfile?.role==='admin')adminJobs();else companyJobs();
+  }catch(e){alert('更新エラー：'+e.message);}
+}
 
 /* ===== ホーム ===== */
 function defaultAlumni(){return [{icon:'🏨',company_name:'ホテル・観光業界',tag:'卒業生実績',description:'接客・清掃・フロントなど、留学生が活躍しています。'},{icon:'🍽️',company_name:'飲食・サービス業界',tag:'アルバイト・就職',description:'レストラン・カフェ・接客など、学生が働きやすい求人があります。'},{icon:'🏭',company_name:'食品・製造業界',tag:'特定技能',description:'食品工場・製造ラインなど、長期雇用につながる求人があります。'},{icon:'🚚',company_name:'物流・倉庫業界',tag:'就職実績',description:'仕分け・配送補助・倉庫管理など、県内企業での実績があります。'},{icon:'💻',company_name:'IT・事務職',tag:'専門職支援',description:'情報処理・一般事務・コールセンターなど、学習内容を活かせます。'},{icon:'🤝',company_name:'特定技能・介護業界',tag:'卒業後支援',description:'外食・宿泊・介護など、卒業後の進路支援につながります。'}]}
 function renderAlumni(list){const seen=new Set();const src=(list&&list.length?list:defaultAlumni()).filter(x=>{const key=(x.company_name||'')+(x.tag||'');if(seen.has(key))return false;seen.add(key);return true});alumni.innerHTML=src.map(x=>'<div class="alumni-card"><div style="font-size:28px">'+esc(x.icon||'🏢')+'</div><h3>'+esc(x.company_name)+'</h3><p>'+esc(x.description)+'</p><span class="link">'+esc(x.tag||'卒業生実績')+'</span></div>').join('')}
-async function loadHome(){try{const d=await sb.from('dispatch_jobs').select('*').eq('active',true).order('created_at',{ascending:false});const c=await sb.from('career_jobs').select('*').eq('active',true).order('created_at',{ascending:false});dispatchCount.textContent=(d.data||[]).length+'件';careerCount.textContent=(c.data||[]).length+'件';homeNewJobs.innerHTML=(d.data||[]).slice(0,2).map(j=>'<div class="item" onclick="showJobs(\'dispatch\')"><div><div class="meta">NEW</div><div class="title">'+esc(j.company)+'</div><div class="summary">'+esc(j.job_type)+'</div></div><div>›</div></div>').join('')||'求人はありません';homePickupJobs.innerHTML=(c.data||[]).slice(0,2).map(j=>'<div class="item" onclick="showJobs(\'career\')"><div><div class="meta">PICK UP</div><div class="title">'+esc(j.company)+'</div><div class="summary">'+esc(j.job_type)+'</div></div><div>›</div></div>').join('')||'求人はありません';const n=await sb.from('site_notices').select('*').eq('active',true).order('created_at',{ascending:false}).limit(3);homeNotices.innerHTML=(n.data||[]).map(x=>'<div class="item" onclick="openModal(\''+esc(x.title).replace(/'/g,'&#39;')+'\',\''+esc(x.body).replace(/'/g,'&#39;')+'\')"><div><div class="meta">'+esc(x.category||'案内')+'</div><div class="title">'+esc(x.title)+'</div><div class="summary">'+esc((x.body||'').slice(0,50))+'</div></div><div>›</div></div>').join('')||'お知らせはありません';const a=await sb.from('alumni_companies').select('*').eq('active',true).order('display_order',{ascending:true});renderAlumni(a.data||[])}catch(e){console.warn(e);renderAlumni([])}}
+async function loadHome(){
+  try{
+    const d=await sb.from('dispatch_jobs').select('*').eq('active',true).order('created_at',{ascending:false});
+    const c=await sb.from('career_jobs').select('*').eq('active',true).order('created_at',{ascending:false});
+    dispatchCount.textContent=(d.data||[]).length+'件';
+    careerCount.textContent=(c.data||[]).length+'件';
+    homeNewJobs.innerHTML=(d.data||[]).slice(0,2).map(j=>`<div class="item" onclick="showJobs('dispatch')"><div><div class="meta">NEW</div><div class="title">${esc(j.company)}</div><div class="summary">${esc(j.job_type)}</div></div><div>›</div></div>`).join('')||'求人はありません';
+    homePickupJobs.innerHTML=(c.data||[]).slice(0,2).map(j=>`<div class="item" onclick="showJobs('career')"><div><div class="meta">PICK UP</div><div class="title">${esc(j.company)}</div><div class="summary">${esc(j.job_type)}</div></div><div>›</div></div>`).join('')||'求人はありません';
+    const n=await sb.from('site_notices').select('*').eq('active',true).order('created_at',{ascending:false}).limit(5);
+    homeNotices.innerHTML=(n.data||[]).map(x=>{
+      const preview=(x.body||'').slice(0,60)+(x.body?.length>60?'…':'');
+      return `<div class="item" onclick="openNoticeDetail('${esc(x.id)}')">
+        <div>
+          <div class="meta">${esc(x.category||'案内')}</div>
+          <div class="title">${esc(x.title)}</div>
+          <div class="summary">${esc(preview)}</div>
+        </div>
+        <div>›</div>
+      </div>`;
+    }).join('')||'お知らせはありません';
+    const a=await sb.from('alumni_companies').select('*').eq('active',true).order('display_order',{ascending:true});
+    renderAlumni(a.data||[]);
+  }catch(e){console.warn(e);renderAlumni([])}
+}
+
+/* お知らせ詳細をモーダルで表示（IDで再取得して全文表示） */
+async function openNoticeDetail(id){
+  try{
+    const r=await sb.from('site_notices').select('*').eq('id',id).maybeSingle();
+    const x=r.data;if(!x)return;
+    openModal(x.title, x.body||'', x.image_url||null, x.file_url||null, x.file_label||'添付ファイル');
+  }catch(e){alert('読込エラー：'+e.message);}
+}
 
 /* ===== 通知ヘルパー ===== */
 async function createInAppNotice(targetRole,targetEmail,title,body,category,type){
@@ -359,11 +460,87 @@ async function openNoticesAndMarkReadStable(){
 }
 
 /* ===== Push通知 ===== */
-async function enablePushNotifications(){
-  try{if(!('Notification'in window))return alert('この端末は通知に対応していません。');if(!('serviceWorker'in navigator))return alert('このブラウザはService Workerに対応していません。');const permission=await Notification.requestPermission();if(permission!=='granted')return alert('通知が許可されていません。');const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});const email=currentProfile?.email||'',role=currentProfile?.role||'';if(email)await sb.from('push_subscriptions').delete().eq('user_email',email);const r=await sb.from('push_subscriptions').insert({user_email:email,role,endpoint:JSON.stringify(sub.toJSON()),active:true});if(r.error)throw r.error;document.querySelectorAll('[data-push-button="true"]').forEach(btn=>{btn.textContent='通知許可済み';btn.classList.remove('blue');btn.classList.add('gray');btn.disabled=true;});alert('Push通知を許可しました。')}catch(e){alert('Push通知設定エラー：'+e.message)}
+
+/**
+ * Push許可状態を3段階でキャッシュ：
+ *  1. ブラウザの Notification.permission === 'granted'  → 即座に許可済み
+ *  2. localStorage に 'push_registered_{email}' = '1'   → 登録済みとみなす
+ *  3. 上記どちらでもない → Supabaseに問い合わせ（初回のみ）
+ */
+function _pushCacheKey(){return 'push_registered_'+(currentProfile?.email||'');}
+function _isPushGrantedLocally(){
+  try{
+    if(!('Notification'in window))return false;
+    if(Notification.permission==='granted'){
+      // ブラウザが許可済みなら念のためlocalStorageにも記録
+      try{localStorage.setItem(_pushCacheKey(),'1');}catch(e){}
+      return true;
+    }
+    if(localStorage.getItem(_pushCacheKey())==='1') return true;
+  }catch(e){}
+  return false;
 }
-async function isPushRegistered(){try{if(!currentProfile?.email)return false;const r=await sb.from('push_subscriptions').select('id').eq('user_email',currentProfile.email).eq('active',true).limit(1);return !!(r.data&&r.data.length)}catch(e){return false}}
-async function pushButtonHtml(){return await isPushRegistered()?'<button class="gray" data-push-button="true" disabled>通知許可済み</button>':'<button class="blue" data-push-button="true" onclick="enablePushNotifications()">通知を許可する</button>'}
+
+async function enablePushNotifications(){
+  try{
+    if(!('Notification'in window))return alert('この端末は通知に対応していません。');
+    if(!('serviceWorker'in navigator))return alert('このブラウザはService Workerに対応していません。');
+    const permission=await Notification.requestPermission();
+    if(permission!=='granted')return alert('通知が許可されていません。ブラウザの設定から通知を許可してください。');
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
+    const email=currentProfile?.email||'',role=currentProfile?.role||'';
+    if(email)await sb.from('push_subscriptions').delete().eq('user_email',email);
+    const r=await sb.from('push_subscriptions').insert({user_email:email,role,endpoint:JSON.stringify(sub.toJSON()),active:true});
+    if(r.error)throw r.error;
+    // ローカルにキャッシュして次回以降のボタン表示に使う
+    try{localStorage.setItem(_pushCacheKey(),'1');}catch(e){}
+    // ページ上のボタンを全部「許可済み」に更新
+    _updateAllPushButtons(true);
+    alert('Push通知を許可しました。次回以降は自動的に有効です。');
+  }catch(e){alert('Push通知設定エラー：'+e.message)}
+}
+
+function _updateAllPushButtons(registered){
+  document.querySelectorAll('[data-push-button="true"]').forEach(btn=>{
+    if(registered){
+      btn.textContent='通知許可済み';
+      btn.classList.remove('blue');
+      btn.classList.add('gray');
+      btn.disabled=true;
+      btn.onclick=null;
+    } else {
+      btn.textContent='通知を許可する';
+      btn.classList.remove('gray');
+      btn.classList.add('blue');
+      btn.disabled=false;
+      btn.onclick=enablePushNotifications;
+    }
+  });
+}
+
+async function isPushRegistered(){
+  // まずローカルで判定（Supabase不要）
+  if(_isPushGrantedLocally()) return true;
+  // ローカルになければSupabaseに問い合わせ
+  try{
+    if(!currentProfile?.email)return false;
+    const r=await sb.from('push_subscriptions').select('id').eq('user_email',currentProfile.email).eq('active',true).limit(1);
+    const registered=!!(r.data&&r.data.length);
+    if(registered){try{localStorage.setItem(_pushCacheKey(),'1');}catch(e){}}
+    return registered;
+  }catch(e){return false}
+}
+
+async function pushButtonHtml(){
+  // ローカルキャッシュで即判定できればSupabaseクエリを省略
+  const registered = _isPushGrantedLocally() || await isPushRegistered();
+  if(registered){
+    return '<button class="gray" data-push-button="true" disabled>通知許可済み</button>';
+  }
+  return '<button class="blue" data-push-button="true" onclick="enablePushNotifications()">通知を許可する</button>';
+}
 
 /* ===== ============================================================ =====
    ===== チャット機能                                                  =====
@@ -740,10 +917,169 @@ function companyStatus(c){if(c.status==='stopped')return'stopped';if(c.approved|
 async function adminDashboard(){showPage('adminPage');adminInfo.textContent=currentProfile.email;const s=await sb.from('students').select('id,resume_attachment_url');const c=await sb.from('companies').select('id,status,approved');const d=await sb.from('dispatch_jobs').select('id,active');const j=await sb.from('career_jobs').select('id,active');const da=await sb.from('dispatch_apps').select('id');const ca=await sb.from('career_apps').select('id');const it=await sb.from('interviews').select('id');const of=await sb.from('offers').select('id,status');const chatUnread=await sb.from('chat_messages').select('id').eq('read_by_admin',false).neq('sender','admin');const chatCount=(chatUnread.data||[]).length;adminContent.innerHTML='<h3>統計</h3><div class="kpi"><div class="stat"><span>学生数</span><b>'+((s.data||[]).length)+'</b></div><div class="stat"><span>企業数</span><b>'+((c.data||[]).length)+'</b></div><div class="stat"><span>公開求人</span><b>'+([...(d.data||[]),...(j.data||[])].filter(x=>x.active).length)+'</b></div><div class="stat"><span>応募件数</span><b>'+((da.data||[]).length+(ca.data||[]).length)+'</b></div><div class="stat"><span>面接件数</span><b>'+((it.data||[]).length)+'</b></div><div class="stat"><span>内定件数</span><b>'+((of.data||[]).length)+'</b></div><div class="stat"><span>チャット未読</span><b class="unread-click-number" onclick="adminChatList()" style="color:#0f4c81">'+chatCount+'</b></div></div>'+(chatCount?'<div class="alert" style="background:#dbeafe;color:#0f4c81;cursor:pointer" onclick="adminChatList()">💬 未対応のチャット相談があります（'+chatCount+'件）→ チャット管理を開く</div>':'')}
 async function adminCompanies(){const r=await sb.from('companies').select('*').order('created_at',{ascending:false});let h='<button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button><h3>企業承認</h3><table><tr><th>会社名</th><th>メール</th><th>担当者</th><th>状態</th><th>操作</th></tr>';(r.data||[]).forEach(c=>{const s=companyStatus(c);h+='<tr><td>'+esc(c.company_name)+'</td><td>'+esc(c.email)+'</td><td>'+esc(c.contact_person)+'</td><td>'+badge(s)+'</td><td><button onclick="setCompany(\''+c.id+'\',\'approved\')">承認</button><button class="gray" onclick="setCompany(\''+c.id+'\',\'pending\')">承認解除</button><button class="red" onclick="setCompany(\''+c.id+'\',\'stopped\')">利用停止</button></td></tr>'});adminContent.innerHTML=h+'</table>'}
 async function setCompany(id,status){const r=await sb.from('companies').update({status,approved:status==='approved'}).eq('id',id);if(r.error)alert(r.error.message);else adminCompanies()}
-async function adminJobs(){const d=await sb.from('dispatch_jobs').select('*');const c=await sb.from('career_jobs').select('*');adminContent.innerHTML='<button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button><h3>求人管理</h3>'+[...(d.data||[]).map(j=>jobCard(j,'dispatch',false,true)),...(c.data||[]).map(j=>jobCard(j,'career',false,true))].join('')}
+async function adminJobs(){
+  const d=await sb.from('dispatch_jobs').select('*').order('created_at',{ascending:false});
+  const c=await sb.from('career_jobs').select('*').order('created_at',{ascending:false});
+  adminContent.innerHTML='<button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button><h3>求人管理</h3>'+
+    [...(d.data||[]).map(j=>jobCard(j,'dispatch',false,true)),...(c.data||[]).map(j=>jobCard(j,'career',false,true))].join('')||'求人はありません';
+}
 async function adminApplications(){const d=await sb.from('dispatch_apps').select('*,students(name,email,resume_attachment_url),dispatch_jobs(company,job_type)');const c=await sb.from('career_apps').select('*,students(name,email,resume_attachment_url),career_jobs(company,job_type)');let h='<button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button><h3>応募管理</h3><table><tr><th>区分</th><th>企業</th><th>職種</th><th>学生</th><th>履歴書</th></tr>';[...(d.data||[]).map(a=>['派遣',a,a.dispatch_jobs]),...(c.data||[]).map(a=>['就職',a,a.career_jobs])].forEach(x=>h+='<tr><td>'+x[0]+'</td><td>'+esc(x[2]?.company)+'</td><td>'+esc(x[2]?.job_type)+'</td><td>'+esc(x[1].students?.name)+'<br>'+esc(x[1].students?.email)+'</td><td>'+(x[1].students?.resume_attachment_url?'<a class="link" target="_blank" href="'+esc(x[1].students.resume_attachment_url)+'">履歴書</a>':'')+'</td></tr>');adminContent.innerHTML=h+'</table>'}
-async function adminNoticeForm(){adminContent.innerHTML='<button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button><h3>お知らせ一斉配信</h3><div class="alert info">学生・企業・全体向けにお知らせを配信します。</div><label>配信対象</label><select id="broadcastTarget"><option value="all">全員</option><option value="student">学生</option><option value="company">企業</option></select><label>カテゴリ</label><select id="broadcastCategory"><option>重要</option><option>案内</option><option>求人</option><option>面接</option></select><label>タイトル</label><input id="broadcastTitle"><label>本文</label><textarea id="broadcastBody"></textarea><button onclick="sendBroadcastNotice()">一斉配信する</button><button class="blue" onclick="enablePushNotifications()">この端末で通知を許可</button>'}
-async function sendBroadcastNotice(){try{const title=v('broadcastTitle'),body=v('broadcastBody'),category=v('broadcastCategory'),target=v('broadcastTarget');if(!title)return alert('タイトルを入力してください。');await sb.from('site_notices').insert({category,title,body,important:category==='重要',active:true});const r=await createInAppNotice(target,null,title,body,category);if(r.error)throw r.error;alert('お知らせを配信しました。');loadHome()}catch(e){alert('配信エラー：'+e.message)}}
+async function adminNoticeForm(){
+  adminContent.innerHTML=`
+    <button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <h3 style="margin:0">お知らせ管理</h3>
+      <button onclick="showNoticeCreateForm()">＋ 新規お知らせを作成</button>
+    </div>
+    <div id="noticeFormArea"></div>
+    <h4 style="margin:14px 0 8px;border-left:4px solid var(--green);padding-left:8px">配信済みお知らせ一覧</h4>
+    <div id="noticeListArea">読込中...</div>`;
+  await loadNoticeList();
+}
+
+function showNoticeCreateForm(existing){
+  const isEdit=!!existing;
+  const fv=(k,def='')=>esc(existing?existing[k]||def:def);
+  document.getElementById('noticeFormArea').innerHTML=`
+    <div class="edit-form-overlay">
+      <button class="gray close-btn" onclick="document.getElementById('noticeFormArea').innerHTML=''">✕ 閉じる</button>
+      <h3>${isEdit?'お知らせを編集':'新規お知らせを作成'}</h3>
+      <div class="alert info">画像・PDF等のファイルを添付して、ビジュアルなお知らせを作成できます。</div>
+      <label>配信対象</label>
+      <select id="bn_target">
+        <option value="all" ${fv('target')==='all'?'selected':''}>全員</option>
+        <option value="student" ${fv('target')==='student'?'selected':''}>学生</option>
+        <option value="company" ${fv('target')==='company'?'selected':''}>企業</option>
+      </select>
+      <label>カテゴリ</label>
+      <select id="bn_category">
+        <option ${fv('category')==='重要'?'selected':''}>重要</option>
+        <option ${fv('category')==='案内'?'selected':''}>案内</option>
+        <option ${fv('category')==='求人'?'selected':''}>求人</option>
+        <option ${fv('category')==='面接'?'selected':''}>面接</option>
+        <option ${fv('category')==='イベント'?'selected':''}>イベント</option>
+      </select>
+      <label>タイトル</label>
+      <input id="bn_title" value="${fv('title')}" placeholder="お知らせのタイトル">
+      <label>本文（テキスト）</label>
+      <textarea id="bn_body" style="min-height:120px">${fv('body')}</textarea>
+      <div class="upload-box">
+        <label>📷 画像（海報・チラシ・ポスター）</label>
+        <p style="font-size:12px;color:var(--muted);margin:4px 0 8px">JPG / PNG / GIF 対応。そのままお知らせ内に表示されます。</p>
+        <input id="bn_img" type="file" accept="image/*">
+        ${isEdit&&existing.image_url?`<div style="margin-top:8px">現在の画像：<br><img src="${esc(existing.image_url)}" style="max-height:120px;border-radius:8px;margin-top:4px"></div>`:''}
+      </div>
+      <div class="upload-box">
+        <label>📎 添付ファイル（PDF / Word等）</label>
+        <p style="font-size:12px;color:var(--muted);margin:4px 0 8px">PDFやWordファイルを添付できます。</p>
+        <input id="bn_file" type="file" accept=".pdf,.doc,.docx,.xlsx,.ppt,.pptx">
+        ${isEdit&&existing.file_url?`<div style="margin-top:8px">現在：<a class="link" href="${esc(existing.file_url)}" target="_blank">${esc(existing.file_label||'添付ファイル')}</a></div>`:''}
+      </div>
+      <label>公開状態</label>
+      <select id="bn_active">
+        <option value="true" ${!isEdit||existing.active!==false?'selected':''}>公開</option>
+        <option value="false" ${isEdit&&existing.active===false?'selected':''}>非公開（下書き）</option>
+      </select>
+      <div class="actions" style="margin-top:14px">
+        <button onclick="saveNotice(${isEdit?`'${esc(existing.id)}'`:'null'})">
+          ${isEdit?'更新する':'配信する'}
+        </button>
+        <button class="gray" onclick="document.getElementById('noticeFormArea').innerHTML=''">キャンセル</button>
+      </div>
+    </div>`;
+  document.getElementById('noticeFormArea').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+async function saveNotice(existingId){
+  try{
+    const title=v('bn_title'),body=v('bn_body'),category=v('bn_category'),target=v('bn_target');
+    if(!title)return alert('タイトルを入力してください。');
+    const data={category,title,body,important:category==='重要',active:v('bn_active')==='true'};
+    // 画像アップロード
+    const imgFile=document.getElementById('bn_img')?.files?.[0];
+    if(imgFile){
+      const path='notice-images/'+Date.now()+'_'+imgFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+      const up=await sb.storage.from('photos').upload(path,imgFile,{upsert:true});
+      if(up.error)throw up.error;
+      data.image_url=sb.storage.from('photos').getPublicUrl(path).data.publicUrl;
+    }
+    // ファイルアップロード
+    const fileEl=document.getElementById('bn_file')?.files?.[0];
+    if(fileEl){
+      const path='notice-files/'+Date.now()+'_'+fileEl.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+      const up=await sb.storage.from('photos').upload(path,fileEl,{upsert:true});
+      if(up.error)throw up.error;
+      data.file_url=sb.storage.from('photos').getPublicUrl(path).data.publicUrl;
+      data.file_label=fileEl.name;
+    }
+    if(existingId&&existingId!=='null'){
+      // 更新
+      const r=await sb.from('site_notices').update(data).eq('id',existingId);
+      if(r.error)throw r.error;
+      alert('お知らせを更新しました。');
+    }else{
+      // 新規作成
+      const r=await sb.from('site_notices').insert(data);
+      if(r.error)throw r.error;
+      // アプリ内通知も配信
+      if(data.active) await createInAppNotice(target,null,title,body,category);
+      alert('お知らせを配信しました。');
+    }
+    document.getElementById('noticeFormArea').innerHTML='';
+    await loadNoticeList();
+    loadHome();
+  }catch(e){alert('保存エラー：'+e.message);}
+}
+
+async function loadNoticeList(){
+  const area=document.getElementById('noticeListArea');
+  if(!area)return;
+  try{
+    const r=await sb.from('site_notices').select('*').order('created_at',{ascending:false});
+    const items=r.data||[];
+    if(!items.length){area.innerHTML='<p style="color:var(--muted)">お知らせはまだありません。</p>';return;}
+    area.innerHTML=items.map(x=>`
+      <div class="mini-card" style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:0">
+            <span class="link">${esc(x.category||'案内')}</span>
+            ${x.active===false?'<span style="background:#fee2e2;color:#991b1b;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:900;margin-left:6px">非公開</span>':''}
+            <b style="display:block;margin-top:6px;font-size:15px">${esc(x.title)}</b>
+            <p style="white-space:pre-line;color:var(--muted);font-size:13px;margin:6px 0;max-height:60px;overflow:hidden">${esc((x.body||'').slice(0,120))}${(x.body||'').length>120?'…':''}</p>
+            ${x.image_url?`<img src="${esc(x.image_url)}" style="max-height:60px;border-radius:6px;margin-top:4px">`:''} 
+            ${x.file_url?`<a class="link" href="${esc(x.file_url)}" target="_blank" style="margin-top:4px;display:inline-block">📎 ${esc(x.file_label||'添付ファイル')}</a>`:''}
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">${esc(x.created_at||'')}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="secondary" onclick="editNotice('${esc(x.id)}')">編集</button>
+            <button class="red" onclick="deleteNotice('${esc(x.id)}','${esc(x.title).replace(/'/g,"\\'")}')">削除</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }catch(e){area.innerHTML=`<div class="alert err">読込エラー：${esc(e.message)}</div>`;}
+}
+
+async function editNotice(id){
+  const r=await sb.from('site_notices').select('*').eq('id',id).maybeSingle();
+  if(r.error||!r.data)return alert('読込エラー');
+  showNoticeCreateForm(r.data);
+}
+
+async function deleteNotice(id,title){
+  if(!confirm(`「${title}」を削除しますか？\nこの操作は元に戻せません。`))return;
+  try{
+    const r=await sb.from('site_notices').delete().eq('id',id);
+    if(r.error)throw r.error;
+    alert('削除しました。');
+    await loadNoticeList();
+    loadHome();
+  }catch(e){alert('削除エラー：'+e.message);}
+}
+
+async function sendBroadcastNotice(){
+  // adminNoticeForm の saveNotice に統合、後方互換のため残す
+  await saveNotice(null);
+}
 
 async function adminPushForm(){
   const st=await sb.from('students').select('email,name,class_name').not('email','is',null).order('created_at',{ascending:false}).limit(500);
