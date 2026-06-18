@@ -917,7 +917,82 @@ function collectResume(){return {name:v('rsName'),furigana:v('rsFurigana'),birth
 async function saveStudentResume(draft){try{const id=await sid();const data=collectResume();if(draft)data.resume_status='作成中';if(document.getElementById('rsResumeFile')?.files?.[0]){data.resume_attachment_url=await upload('rsResumeFile','student-resumes',data.email||data.name||id);data.resume_attachment_flag='あり'}if(document.getElementById('rsPhotoFile')?.files?.[0]){data.photo_url=await upload('rsPhotoFile','student-photos',data.email||data.name||id)}const r=await sb.from('students').update(data).eq('id',id);if(r.error)throw r.error;alert(draft?'下書きを保存しました。':'保存しました。');studentResume()}catch(e){alert('保存エラー：'+e.message)}}
 function resumeHtml(d){return '<div id="resumePrintArea" class="resume-print"><h1>履歴書</h1><table><tr><th>氏名</th><td>'+esc(d.name)+'</td><th>フリガナ</th><td>'+esc(d.furigana)+'</td></tr><tr><th>生年月日</th><td>'+esc(d.birthday)+'</td><th>性別</th><td>'+esc(d.gender)+'</td></tr><tr><th>住所</th><td colspan="3">'+esc(d.postcode)+' '+esc(d.address)+'<br>'+esc(d.address_kana)+'</td></tr><tr><th>学歴</th><td colspan="3">'+esc(d.home_education)+'<br>'+esc(d.japanese_school)+'<br>'+esc(d.class_name)+'</td></tr><tr><th>資格</th><td colspan="3">JLPT：'+esc(d.jlpt)+'<br>'+esc(d.skills)+'</td></tr><tr><th>志望動機</th><td colspan="3" style="white-space:pre-line">'+esc(d.motivation)+'</td></tr><tr><th>自己PR</th><td colspan="3" style="white-space:pre-line">'+esc(d.self_pr)+'</td></tr></table></div>'}
 function previewResume(){resumeBox.innerHTML=resumeHtml(collectResume())}function printResume(){previewResume();setTimeout(()=>window.print(),300)}function downloadWord(){const d=collectResume();const b=new Blob(['<html><meta charset="UTF-8"><body>'+resumeHtml(d)+'</body></html>'],{type:'application/msword'});const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=(d.name||'resume')+'_履歴書.doc';a.click();URL.revokeObjectURL(u)}
-async function studentJobs(k){showPage('studentPage');const r=await sb.from(k==='career'?'career_jobs':'dispatch_jobs').select('*').eq('active',true);studentContent.innerHTML='<button class="gray" onclick="studentDashboard()">← 学生マイページへ戻る</button>'+((r.data||[]).map(j=>jobCard(j,k,true)).join('')||'求人はありません')}
+async function studentJobs(k){
+  showPage('studentPage');
+  const r=await sb.from(k==='career'?'career_jobs':'dispatch_jobs').select('*').eq('active',true).order('created_at',{ascending:false});
+  const jobs=r.data||[];
+  const foreignOpts=['','可','相談'];
+  const jlptOpts=['','不問','N5以上','N4以上','N3以上','N2以上'];
+  studentContent.innerHTML=`
+    <button class="gray" onclick="studentDashboard()">← 学生マイページへ戻る</button>
+    <h3>${k==='career'?'就職支援':'人材派遣'}求人 <span style="font-size:14px;font-weight:400;color:var(--muted)">${jobs.length}件</span></h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end">
+      <div><label style="font-size:12px">キーワード</label><input id="sjSearch" placeholder="職種・企業・内容..." style="width:180px;margin:2px 0 0" oninput="filterStudentJobs()"></div>
+      <div><label style="font-size:12px">外国人応募</label><select id="sjForeign" onchange="filterStudentJobs()" style="width:100px;margin:2px 0 0"><option value="">すべて</option>${foreignOpts.slice(1).map(o=>`<option>${o}</option>`).join('')}</select></div>
+      <div><label style="font-size:12px">日本語レベル</label><select id="sjJlpt" onchange="filterStudentJobs()" style="width:110px;margin:2px 0 0"><option value="">すべて</option>${jlptOpts.slice(1).map(o=>`<option>${o}</option>`).join('')}</select></div>
+      <button class="gray" style="padding:8px 12px;font-size:12px" onclick="document.getElementById('sjSearch').value='';document.getElementById('sjForeign').value='';document.getElementById('sjJlpt').value='';filterStudentJobs()">リセット</button>
+    </div>
+    <div id="sjJobList">${jobs.map(j=>studentJobCardHtml(j,k)).join('')||'<p style="color:var(--muted)">求人はありません</p>'}</div>`;
+  window._studentJobs={jobs,k};
+}
+
+function studentJobCardHtml(j,k){
+  const badges=[];
+  if(j.foreigner_ok==='可'||j.foreigner_ok==='相談') badges.push(`<span style="background:#dcfce7;color:#166534;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:900">外国人${j.foreigner_ok}</span>`);
+  if(j.japanese_level) badges.push(`<span style="background:#e0f2fe;color:#0369a1;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:900">${j.japanese_level}</span>`);
+  return `<div class="job" data-company="${esc(j.company||'')}" data-type="${esc(j.job_type||'')}" data-content="${esc(j.work_content||'')}" data-foreign="${esc(j.foreigner_ok||'')}" data-jlpt="${esc(j.japanese_level||'')}">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><span class="link">${k==='career'?'就職':'派遣'}</span>${badges.join('')}</div>
+    <h3 style="margin:0 0 6px">${esc(j.company)}</h3>
+    <p style="margin:4px 0"><b>${esc(j.job_type)}</b></p>
+    <p style="margin:4px 0;font-size:13px;color:var(--muted)">📍 ${esc(j.work_place||'')} ／ 💴 ${esc(j.pay||'')} ／ 🕐 ${esc(j.work_time||'')}</p>
+    ${j.image_url?`<img src="${esc(j.image_url)}" style="width:100%;border-radius:10px;margin:8px 0;max-height:180px;object-fit:cover">`:''}
+    <p style="font-size:13px;margin:6px 0">${esc((j.work_content||'').slice(0,100))}${(j.work_content||'').length>100?'…':''}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button class="secondary" onclick="openJobDetailModal('${k}','${j.id}')">詳細を見る</button>
+      <button onclick="applyJob('${k}','${j.id}')">応募する</button>
+      <button class="favorite-btn" onclick="toggleJobFavorite('${k}','${j.id}')">★ お気に入り</button>
+    </div>
+  </div>`;
+}
+
+function filterStudentJobs(){
+  const q=(document.getElementById('sjSearch')?.value||'').toLowerCase();
+  const foreign=document.getElementById('sjForeign')?.value||'';
+  const jlpt=document.getElementById('sjJlpt')?.value||'';
+  const cards=document.querySelectorAll('#sjJobList .job');
+  let shown=0;
+  cards.forEach(card=>{
+    const text=(card.dataset.company+card.dataset.type+card.dataset.content).toLowerCase();
+    const matchQ=!q||text.includes(q);
+    const matchF=!foreign||card.dataset.foreign===foreign;
+    const matchJ=!jlpt||card.dataset.jlpt===jlpt;
+    const show=matchQ&&matchF&&matchJ;
+    card.style.display=show?'':'none';
+    if(show)shown++;
+  });
+}
+
+async function openJobDetailModal(k,id){
+  const tab=k==='career'?'career_jobs':'dispatch_jobs';
+  const r=await sb.from(tab).select('*').eq('id',id).maybeSingle();
+  const j=r.data;if(!j)return;
+  let html=`<h2>${esc(j.company)} ／ ${esc(j.job_type)}</h2>`;
+  html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">`;
+  if(j.foreigner_ok) html+=`<span style="background:#dcfce7;color:#166534;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:900">外国人応募：${esc(j.foreigner_ok)}</span>`;
+  if(j.japanese_level) html+=`<span style="background:#e0f2fe;color:#0369a1;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:900">日本語：${esc(j.japanese_level)}</span>`;
+  html+=`</div>`;
+  if(j.image_url) html+=`<img src="${esc(j.image_url)}" style="width:100%;border-radius:12px;margin:10px 0;max-height:400px;object-fit:contain;background:#f8fafc">`;
+  const fields=[['📍 勤務地',j.work_place],['💴 給与',j.pay],['🕐 勤務時間',j.work_time],['📅 出勤日',j.work_days],['📋 仕事内容',j.work_content],['✅ 応募条件',j.requirements],['📝 備考',j.note]];
+  fields.forEach(([label,val])=>{if(val)html+=`<div style="padding:8px 0;border-bottom:1px solid var(--line)"><span style="font-size:12px;color:var(--muted)">${label}</span><div style="margin-top:4px;white-space:pre-line">${esc(val)}</div></div>`;});
+  if(j.file_url) html+=`<div style="margin-top:12px;padding:12px;background:#f0f9ff;border-radius:10px"><a href="${esc(j.file_url)}" target="_blank" style="color:#0369a1;font-weight:800">📎 ${esc(j.file_label||'添付ファイルを開く')}</a></div>`;
+  html+=`<div style="margin-top:16px;display:flex;gap:8px">
+    <button onclick="applyJob('${k}','${id}');closeModal()">応募する</button>
+    <button class="favorite-btn" onclick="toggleJobFavorite('${k}','${id}')">★ お気に入り</button>
+    <button class="gray" onclick="closeModal()">閉じる</button>
+  </div>`;
+  modalContent.innerHTML=html;
+  modal.classList.add('on');
+}
 async function applyJob(k,id){const st=await sid();const tab=k==='career'?'career_apps':'dispatch_apps';const ex=await sb.from(tab).select('id').eq('student_id',st).eq('job_id',id).maybeSingle();if(ex.data)return alert('応募済みです');const r=await sb.from(tab).insert({student_id:st,job_id:id,status:'応募中'});if(r.error)alert(r.error.message);else alert('応募しました')}
 async function toggleJobFavorite(kind,jobId){try{const st=await sid();const ex=await sb.from('job_favorites').select('id').eq('student_id',st).eq('job_kind',kind).eq('job_id',jobId).maybeSingle();if(ex.data){await sb.from('job_favorites').delete().eq('id',ex.data.id);alert('お気に入りを解除しました。')}else{const r=await sb.from('job_favorites').insert({student_id:st,job_kind:kind,job_id:jobId});if(r.error)throw r.error;alert('お気に入りに追加しました。')}}catch(e){alert('お気に入りエラー：'+e.message)}}
 async function studentFavorites(){const st=await sid();const r=await sb.from('job_favorites').select('*').eq('student_id',st).order('created_at',{ascending:false});let h='<button class="gray" onclick="studentDashboard()">← 学生マイページへ戻る</button><h3>お気に入り求人</h3>';const rows=r.data||[];if(!rows.length){studentContent.innerHTML=h+'お気に入り求人はありません';return}for(const f of rows){const jr=await sb.from(f.job_kind==='career'?'career_jobs':'dispatch_jobs').select('*').eq('id',f.job_id).maybeSingle();if(jr.data)h+=jobCard(jr.data,f.job_kind,true,false)}studentContent.innerHTML=h}
@@ -935,8 +1010,98 @@ async function studentInterviews(){const st=await sid();const r=await sb.from('i
 async function companyDashboard(){showPage('companyPage');companyInfo.textContent=currentProfile.email;const id=await cid();const d=await sb.from('dispatch_jobs').select('id').eq('company_id',id);const c=await sb.from('career_jobs').select('id').eq('company_id',id);const i=await sb.from('interviews').select('id').eq('company_id',id);const chatUnread=await sb.from('chat_messages').select('id').eq('user_email',currentProfile.email).eq('sender','admin').eq('read_by_user',false);const chatCount=(chatUnread.data||[]).length;companyContent.innerHTML='<h3>ダッシュボード</h3><div class="kpi"><div class="stat"><span>求人件数</span><b>'+((d.data||[]).length+(c.data||[]).length)+'</b></div><div class="stat"><span>面接予定</span><b>'+((i.data||[]).length)+'</b></div><div class="stat"><span>チャット未読</span><b class="unread-click-number" onclick="openChatPanel()" style="color:#0f4c81">'+chatCount+'</b></div></div><button onclick="companyJobForm()">求人掲載</button><button class="secondary" onclick="companyJobs()">自社求人</button>'+(chatCount?'<div class="alert" style="background:#dbeafe;color:#0f4c81;cursor:pointer" onclick="openChatPanel()">💬 キャリアセンターから返信があります（'+chatCount+'件未読）→ チャットを開く</div>':'')}
 function companyJobForm(){companyContent.innerHTML='<button class="gray" onclick="companyDashboard()">← 企業マイページへ戻る</button><h3>求人掲載</h3><div class="alert info">空白があっても保存できます。</div><label>求人区分</label><select id="cjkind"><option value="dispatch">人材派遣・アルバイト</option><option value="career">就職支援</option></select><div class="row"><div><label>募集職種</label><input id="cjtype"></div><div><label>募集人数</label><input id="cjquota" type="number" value="1"></div></div><label>仕事内容</label><textarea id="cjwork"></textarea><div class="row"><div><label>勤務地</label><input id="cjplace"></div><div><label>給与</label><input id="cjpay"></div></div><div class="row"><div><label>勤務時間</label><input id="cjtime"></div><div><label>出勤日・曜日</label><input id="cjdays"></div></div><label>応募条件</label><textarea id="cjrequirements"></textarea><div class="row"><div><label>外国人応募</label><select id="cjForeign"><option></option><option>可</option><option>相談</option><option>不可</option></select></div><div><label>日本語レベル</label><select id="cjJapanese"><option></option><option>不問</option><option>N5以上</option><option>N4以上</option><option>N3以上</option><option>N2以上</option></select></div></div><label>備考</label><textarea id="cjNote"></textarea><button class="yellow" onclick="companySaveJob(true)">下書き保存</button><button onclick="companySaveJob(false)">求人を掲載する</button>'}
 async function companySaveJob(draft){try{const id=await cid();const comp=await sb.from('companies').select('*').eq('id',id).single();const q=Number(v('cjquota')||1);const p={company_id:id,company:comp.data.company_name||'未入力企業',job_type:v('cjtype')||'未入力職種',work_content:v('cjwork'),work_place:v('cjplace'),pay:v('cjpay'),work_time:v('cjtime'),work_days:v('cjdays'),requirements:v('cjrequirements'),foreigner_ok:v('cjForeign'),japanese_level:v('cjJapanese'),note:v('cjNote'),quota:q,remaining_quota:q,active:!draft};const r=await sb.from(v('cjkind')==='career'?'career_jobs':'dispatch_jobs').insert(p);if(r.error)throw r.error;alert(draft?'下書きを保存しました。':'求人を掲載しました。');companyJobs()}catch(e){alert('求人保存エラー：'+e.message)}}
-async function companyJobs(){const id=await cid();const d=await sb.from('dispatch_jobs').select('*').eq('company_id',id);const c=await sb.from('career_jobs').select('*').eq('company_id',id);companyContent.innerHTML='<button class="gray" onclick="companyDashboard()">← 企業マイページへ戻る</button><h3>自社求人</h3>'+[...(d.data||[]).map(j=>jobCard(j,'dispatch',false,true)),...(c.data||[]).map(j=>jobCard(j,'career',false,true))].join('')}
-async function companyApplicants(){companyContent.innerHTML='<button class="gray" onclick="companyDashboard()">← 企業マイページへ戻る</button><h3>応募学生</h3><p>応募学生は管理者と連携して確認してください。</p>'}
+async function companyJobs(){
+  const id=await cid();
+  const d=await sb.from('dispatch_jobs').select('*').eq('company_id',id).order('created_at',{ascending:false});
+  const c=await sb.from('career_jobs').select('*').eq('company_id',id).order('created_at',{ascending:false});
+  const allJobs=[...(d.data||[]).map(j=>({...j,_kind:'dispatch'})),...(c.data||[]).map(j=>({...j,_kind:'career'}))];
+  const pubCount=allJobs.filter(j=>j.active).length;
+  const draftCount=allJobs.filter(j=>!j.active).length;
+  let h=`<button class="gray" onclick="companyDashboard()">← 企業マイページへ戻る</button>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+    <h3 style="margin:0">自社求人 <span style="font-size:14px;font-weight:400;color:var(--muted)">公開${pubCount}件 / 非公開${draftCount}件</span></h3>
+    <button onclick="companyJobForm()">＋ 求人を追加</button>
+  </div>`;
+  if(!allJobs.length){companyContent.innerHTML=h+'<p style="color:var(--muted)">求人はまだありません。「求人を追加」から登録してください。</p>';return;}
+  h+=allJobs.map(j=>`
+    <div class="job" style="${j.active===false?'opacity:.7;border-left:4px solid #94a3b8':'border-left:4px solid var(--green)'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div style="flex:1">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+            <span class="link">${j._kind==='career'?'就職':'派遣'}</span>
+            <span style="background:${j.active?'#dcfce7':'#f1f5f9'};color:${j.active?'#166534':'#64748b'};border-radius:999px;padding:3px 8px;font-size:11px;font-weight:900">${j.active?'公開中':'非公開'}</span>
+          </div>
+          <h3 style="margin:0 0 4px">${esc(j.job_type)}</h3>
+          <p style="margin:4px 0;font-size:13px;color:var(--muted)">📍 ${esc(j.work_place||'')} ／ 💴 ${esc(j.pay||'')} ／ 🕐 ${esc(j.work_time||'')}</p>
+          <p style="font-size:13px;margin:4px 0">${esc((j.work_content||'').slice(0,60))}${(j.work_content||'').length>60?'…':''}</p>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0">
+          <button style="background:${j.active?'#f1f5f9':'#32c904'};color:${j.active?'#334155':'#fff'};padding:7px 12px;font-size:12px" onclick="toggleJobActive('${j._kind}','${j.id}',${!j.active})">${j.active?'非公開にする':'公開する'}</button>
+          <button class="secondary" style="padding:7px 12px;font-size:12px" onclick="showEditJobForm('${j._kind}','${j.id}')">編集</button>
+          <button class="red" style="padding:7px 12px;font-size:12px" onclick="deleteJob('${j._kind}','${j.id}')">削除</button>
+        </div>
+      </div>
+    </div>`).join('');
+  companyContent.innerHTML=h;
+}
+
+async function toggleJobActive(k,id,active){
+  const tab=k==='career'?'career_jobs':'dispatch_jobs';
+  const r=await sb.from(tab).update({active}).eq('id',id);
+  if(r.error)return alert('更新エラー：'+r.error.message);
+  companyJobs();
+}
+async function companyApplicants(){
+  try{
+    const id=await cid();
+    const d=await sb.from('dispatch_apps').select('*,students(name,email,tel,jlpt,resume_attachment_url,photo_url,class_name),dispatch_jobs(job_type)').eq('dispatch_jobs.company_id',id);
+    const c=await sb.from('career_apps').select('*,students(name,email,tel,jlpt,resume_attachment_url,photo_url,class_name),career_jobs(job_type)').eq('career_jobs.company_id',id);
+    // company_idでフィルタリング（JOIN経由ではSupabaseが難しいので別途取得）
+    const dJobs=await sb.from('dispatch_jobs').select('id').eq('company_id',id);
+    const cJobs=await sb.from('career_jobs').select('id').eq('company_id',id);
+    const dJobIds=new Set((dJobs.data||[]).map(x=>x.id));
+    const cJobIds=new Set((cJobs.data||[]).map(x=>x.id));
+    const dispApps=(d.data||[]).filter(a=>dJobIds.has(a.job_id));
+    const careerApps=(c.data||[]).filter(a=>cJobIds.has(a.job_id));
+    const allApps=[...dispApps.map(a=>({...a,_kind:'派遣',_job:a.dispatch_jobs})),...careerApps.map(a=>({...a,_kind:'就職',_job:a.career_jobs}))];
+    let h=`<button class="gray" onclick="companyDashboard()">← 企業マイページへ戻る</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <h3 style="margin:0">応募学生 <span style="font-size:14px;font-weight:400;color:var(--muted)">${allApps.length}件</span></h3>
+    </div>`;
+    if(!allApps.length){companyContent.innerHTML=h+'<div class="alert info">まだ応募はありません。</div>';return;}
+    const statusColors={応募中:'#fef9c3|#854d0e',面接中:'#dbeafe|#1d4ed8',内定:'#dcfce7|#166534',不採用:'#fee2e2|#991b1b'};
+    h+=`<div style="overflow-x:auto"><table>
+      <thead><tr><th>区分</th><th>職種</th><th>学生名</th><th>連絡先</th><th>JLPT</th><th>学科</th><th>履歴書</th><th>状態</th><th>操作</th></tr></thead><tbody>`;
+    allApps.forEach(a=>{
+      const st=a.students||{};
+      const sc=(statusColors[a.status]||'#f1f5f9|#334155').split('|');
+      h+=`<tr>
+        <td><span class="link">${a._kind}</span></td>
+        <td>${esc(a._job?.job_type||'')}</td>
+        <td><b>${esc(st.name||'')}</b>${st.photo_url?`<br><img src="${esc(st.photo_url)}" style="max-width:36px;border-radius:4px;margin-top:2px">`:''}
+        </td>
+        <td style="font-size:12px">${esc(st.email||'')}<br>${esc(st.tel||'')}</td>
+        <td>${esc(st.jlpt||'')}</td>
+        <td>${esc(st.class_name||'')}</td>
+        <td>${st.resume_attachment_url?`<a class="link" href="${esc(st.resume_attachment_url)}" target="_blank">履歴書</a>`:'未登録'}</td>
+        <td><span style="background:${sc[0]};color:${sc[1]};border-radius:999px;padding:4px 8px;font-size:12px;font-weight:900">${esc(a.status||'応募中')}</span></td>
+        <td>
+          <select style="font-size:12px;padding:4px;margin:0;width:90px" onchange="updateAppStatus('${a._kind==='派遣'?'dispatch':'career'}','${a.id}',this.value)">
+            ${['応募中','面接中','内定','不採用'].map(s=>`<option ${a.status===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </td>
+      </tr>`;
+    });
+    h+='</tbody></table></div>';
+    companyContent.innerHTML=h;
+  }catch(e){companyContent.innerHTML=`<button class="gray" onclick="companyDashboard()">← 戻る</button><div class="alert err">読込エラー：${esc(e.message)}</div>`;}
+}
+
+async function updateAppStatus(kind,id,status){
+  const tab=kind==='dispatch'?'dispatch_apps':'career_apps';
+  const r=await sb.from(tab).update({status}).eq('id',id);
+  if(r.error)alert('更新エラー：'+r.error.message);
+}
 async function companyFavoriteStudents(){companyContent.innerHTML='<button class="gray" onclick="companyDashboard()">← 企業マイページへ戻る</button><h3>お気に入り学生</h3><div class="alert info">応募者一覧から学生を確認し、必要に応じて管理者へ面接依頼を行ってください。</div>'}
 async function companyInterviews(){const id=await cid();const r=await sb.from('interviews').select('*,students(name,email)').eq('company_id',id).order('interview_time',{ascending:true});companyContent.innerHTML='<button class="gray" onclick="companyDashboard()">← 企業マイページへ戻る</button><h3>面接管理</h3>'+((r.data||[]).map(x=>'<div class="mini-card interview-row"><b>'+esc(x.title||'面接')+'</b><p>学生：'+esc(x.students?.name||'')+' / '+esc(x.students?.email||'')+'</p><p>日時：'+esc(x.interview_time||'')+' / 方法：'+esc(x.method||'')+'</p></div>').join('')||'面接予定はありません')}
 async function companyNotices(){const notices=await fetchMyNotices('company',currentProfile.email);companyContent.innerHTML='<button class="gray" onclick="companyDashboard()">← 企業マイページへ戻る</button><h3>通知</h3><div class="alert info">未読通知は赤い表示で確認できます。</div>'+(notices.map(noticeCard).join('')||'通知はありません');await refreshNoticeBadge();}
@@ -989,10 +1154,116 @@ async function deleteCompany(id,name){
 async function adminJobs(){
   const d=await sb.from('dispatch_jobs').select('*').order('created_at',{ascending:false});
   const c=await sb.from('career_jobs').select('*').order('created_at',{ascending:false});
-  adminContent.innerHTML='<button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button><h3>求人管理</h3>'+
-    [...(d.data||[]).map(j=>jobCard(j,'dispatch',false,true)),...(c.data||[]).map(j=>jobCard(j,'career',false,true))].join('')||'求人はありません';
+  const allJobs=[...(d.data||[]).map(j=>({...j,_kind:'dispatch'})),...(c.data||[]).map(j=>({...j,_kind:'career'}))];
+  const pubCount=allJobs.filter(j=>j.active).length;
+  let h=`<button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+    <h3 style="margin:0">求人管理 <span style="font-size:14px;font-weight:400;color:var(--muted)">公開${pubCount}件 / 全${allJobs.length}件</span></h3>
+    <div style="display:flex;gap:8px">
+      <select id="jobActiveFilter" onchange="filterAdminJobs()" style="font-size:13px;padding:6px;margin:0"><option value="">すべて</option><option value="true">公開のみ</option><option value="false">非公開のみ</option></select>
+      <input id="jobSearchQ" placeholder="企業・職種で検索" oninput="filterAdminJobs()" style="width:160px;margin:0;font-size:13px;padding:7px">
+    </div>
+  </div>
+  <div id="adminJobList">`;
+  allJobs.forEach(j=>{
+    h+=`<div class="job" data-company="${esc(j.company||'')}" data-type="${esc(j.job_type||'')}" data-active="${j.active}" style="${j.active===false?'opacity:.72;border-left:4px solid #94a3b8':'border-left:4px solid var(--green)'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div style="flex:1">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+            <span class="link">${j._kind==='career'?'就職':'派遣'}</span>
+            <span style="background:${j.active?'#dcfce7':'#f1f5f9'};color:${j.active?'#166534':'#64748b'};border-radius:999px;padding:3px 8px;font-size:11px;font-weight:900">${j.active?'公開中':'非公開'}</span>
+          </div>
+          <h3 style="margin:0 0 4px">${esc(j.company)}</h3>
+          <p style="margin:3px 0"><b>${esc(j.job_type)}</b></p>
+          <p style="margin:3px 0;font-size:13px;color:var(--muted)">📍 ${esc(j.work_place||'')} ／ 💴 ${esc(j.pay||'')}</p>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;flex-shrink:0">
+          <button style="background:${j.active?'#f1f5f9':'#32c904'};color:${j.active?'#334155':'#fff'};padding:6px 10px;font-size:12px" onclick="adminToggleJobActive('${j._kind}','${j.id}',${!j.active})">${j.active?'非公開':'公開'}</button>
+          <button class="secondary" style="padding:6px 10px;font-size:12px" onclick="showEditJobForm('${j._kind}','${j.id}')">編集</button>
+          <button class="red" style="padding:6px 10px;font-size:12px" onclick="deleteJob('${j._kind}','${j.id}')">削除</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  h+='</div>';
+  adminContent.innerHTML=h;
 }
-async function adminApplications(){const d=await sb.from('dispatch_apps').select('*,students(name,email,resume_attachment_url),dispatch_jobs(company,job_type)');const c=await sb.from('career_apps').select('*,students(name,email,resume_attachment_url),career_jobs(company,job_type)');let h='<button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button><h3>応募管理</h3><table><tr><th>区分</th><th>企業</th><th>職種</th><th>学生</th><th>履歴書</th></tr>';[...(d.data||[]).map(a=>['派遣',a,a.dispatch_jobs]),...(c.data||[]).map(a=>['就職',a,a.career_jobs])].forEach(x=>h+='<tr><td>'+x[0]+'</td><td>'+esc(x[2]?.company)+'</td><td>'+esc(x[2]?.job_type)+'</td><td>'+esc(x[1].students?.name)+'<br>'+esc(x[1].students?.email)+'</td><td>'+(x[1].students?.resume_attachment_url?'<a class="link" target="_blank" href="'+esc(x[1].students.resume_attachment_url)+'">履歴書</a>':'')+'</td></tr>');adminContent.innerHTML=h+'</table>'}
+
+function filterAdminJobs(){
+  const q=(document.getElementById('jobSearchQ')?.value||'').toLowerCase();
+  const active=document.getElementById('jobActiveFilter')?.value||'';
+  document.querySelectorAll('#adminJobList .job').forEach(card=>{
+    const text=(card.dataset.company+card.dataset.type).toLowerCase();
+    const matchQ=!q||text.includes(q);
+    const matchA=!active||card.dataset.active===active;
+    card.style.display=(matchQ&&matchA)?'':'none';
+  });
+}
+
+async function adminToggleJobActive(k,id,active){
+  const tab=k==='career'?'career_jobs':'dispatch_jobs';
+  const r=await sb.from(tab).update({active}).eq('id',id);
+  if(r.error)return alert('更新エラー：'+r.error.message);
+  adminJobs();
+}
+async function adminApplications(){
+  try{
+    const [d,c]=await Promise.all([
+      sb.from('dispatch_apps').select('*,students(name,email,tel,jlpt,resume_attachment_url,photo_url),dispatch_jobs(company,job_type)').order('created_at',{ascending:false}),
+      sb.from('career_apps').select('*,students(name,email,tel,jlpt,resume_attachment_url,photo_url),career_jobs(company,job_type)').order('created_at',{ascending:false})
+    ]);
+    const allApps=[...(d.data||[]).map(a=>['派遣','dispatch',a,a.dispatch_jobs]),...(c.data||[]).map(a=>['就職','career',a,a.career_jobs])];
+    const statusColors={応募中:'#fef9c3|#854d0e',面接中:'#dbeafe|#1d4ed8',内定:'#dcfce7|#166534',不採用:'#fee2e2|#991b1b'};
+    let h=`<button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <h3 style="margin:0">応募管理 <span style="font-size:14px;font-weight:400;color:var(--muted)">${allApps.length}件</span></h3>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="appStatusFilter" onchange="filterAppTable()" style="font-size:13px;padding:6px;margin:0;width:100px">
+          <option value="">すべて</option>
+          ${['応募中','面接中','内定','不採用'].map(s=>`<option>${s}</option>`).join('')}
+        </select>
+        <input id="appSearch" placeholder="氏名・企業で検索" oninput="filterAppTable()" style="width:160px;margin:0;font-size:13px;padding:7px">
+      </div>
+    </div>
+    <div style="overflow-x:auto"><table id="appTable">
+      <thead><tr><th>区分</th><th>企業</th><th>職種</th><th>学生</th><th>連絡先</th><th>JLPT</th><th>履歴書</th><th>状態</th><th>変更</th></tr></thead>
+      <tbody>`;
+    allApps.forEach(([kind,kindKey,a,job])=>{
+      const st=a.students||{};
+      const sc=(statusColors[a.status]||'#f1f5f9|#334155').split('|');
+      h+=`<tr data-name="${esc(st.name||'')}" data-company="${esc(job?.company||'')}" data-status="${esc(a.status||'')}">
+        <td><span class="link">${kind}</span></td>
+        <td>${esc(job?.company||'')}</td>
+        <td>${esc(job?.job_type||'')}</td>
+        <td><b>${esc(st.name||'')}</b></td>
+        <td style="font-size:12px">${esc(st.email||'')}<br>${esc(st.tel||'')}</td>
+        <td>${esc(st.jlpt||'')}</td>
+        <td>${st.resume_attachment_url?`<a class="link" href="${esc(st.resume_attachment_url)}" target="_blank">履歴書</a>`:'未'}</td>
+        <td><span style="background:${sc[0]};color:${sc[1]};border-radius:999px;padding:4px 8px;font-size:12px;font-weight:900;white-space:nowrap">${esc(a.status||'応募中')}</span></td>
+        <td>
+          <select style="font-size:12px;padding:4px;margin:0;width:85px" onchange="updateAppStatus('${kindKey}','${a.id}',this.value)">
+            ${['応募中','面接中','内定','不採用'].map(s=>`<option ${a.status===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </td>
+      </tr>`;
+    });
+    h+='</tbody></table></div>';
+    adminContent.innerHTML=h;
+  }catch(e){adminContent.innerHTML=`<button class="gray" onclick="adminDashboard()">← 戻る</button><div class="alert err">読込エラー：${esc(e.message)}</div>`;}
+}
+
+function filterAppTable(){
+  const q=(document.getElementById('appSearch')?.value||'').toLowerCase();
+  const st=document.getElementById('appStatusFilter')?.value||'';
+  document.querySelectorAll('#appTable tbody tr').forEach(row=>{
+    const name=(row.dataset.name||'').toLowerCase();
+    const company=(row.dataset.company||'').toLowerCase();
+    const status=row.dataset.status||'';
+    const matchQ=!q||name.includes(q)||company.includes(q);
+    const matchS=!st||status===st;
+    row.style.display=(matchQ&&matchS)?'':'none';
+  });
+}
 async function adminNoticeForm(){
   adminContent.innerHTML=`
     <button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button>
