@@ -325,6 +325,75 @@ async function loadHome(){
   }catch(e){console.warn(e);renderAlumni([])}
 }
 
+/* ===== 通知ヘルパー ===== */
+async function createInAppNotice(targetRole,targetEmail,title,body,category,type){
+  const finalRole=targetEmail?'individual':(targetRole||'all');
+  const finalType=type||(targetEmail?'personal':'all');
+  return await sb.from('user_notifications').insert({target_role:finalRole,target_email:targetEmail||null,title,body,category:category||'案内',notice_type:finalType,active:true,read:false});
+}
+
+async function fetchMyNotices(role,email){
+  const[q1,q2,q3]=await Promise.all([
+    sb.from('user_notifications').select('*').eq('target_role','all').is('target_email',null).eq('active',true).order('created_at',{ascending:false}),
+    sb.from('user_notifications').select('*').eq('target_role',role).is('target_email',null).eq('active',true).order('created_at',{ascending:false}),
+    sb.from('user_notifications').select('*').eq('target_role','individual').eq('target_email',email).eq('active',true).order('created_at',{ascending:false})
+  ]);
+  const seen=new Set();
+  return[...(q1.data||[]),...(q2.data||[]),...(q3.data||[])].filter(x=>{if(seen.has(x.id))return false;seen.add(x.id);return true}).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+}
+
+async function refreshNoticeBadge(){
+  if(!currentProfile)return;
+  const all=await fetchMyNotices(currentProfile.role||'',currentProfile.email);
+  const unread=all.filter(x=>!x.read);
+  const allUnread=unread.filter(x=>x.notice_type!=='personal'&&!x.target_email).length;
+  const personalUnread=unread.filter(x=>x.notice_type==='personal'||x.target_email).length;
+  const label=currentProfile.role==='student'?'学生マイページ':currentProfile.role==='company'?'企業マイページ':'管理者マイページ';
+  let badge='';
+  if(allUnread>0)badge+=`<span class="notify-badge" style="cursor:pointer" title="全体通知${allUnread}件" onclick="goMyPage();setTimeout(()=>{if(currentProfile?.role==='student')studentNotices();else if(currentProfile?.role==='company')companyNotices();},300)">${allUnread}</span>`;
+  if(personalUnread>0)badge+=`<span class="notify-badge" style="background:#9333ea;cursor:pointer" title="個別通知${personalUnread}件" onclick="goMyPage();setTimeout(()=>{if(currentProfile?.role==='student')studentNotices();else if(currentProfile?.role==='company')companyNotices();},300)">${personalUnread}</span>`;
+  myPageBtn.innerHTML=label+badge;
+}
+
+function noticeTypeLabel(n){
+  return(n.notice_type==='personal'||n.target_email)?'<span class="notice-type-personal">🔔 個別通知</span>':'<span class="notice-type-all">📢 全体通知</span>';
+}
+
+function noticeCard(n){
+  const cls=n.read?'notice-card-read':'notice-card-unread';
+  const readBtn=n.read?'<span class="summary" style="font-size:12px">✅ 既読</span>':`<button class="secondary" style="font-size:12px;padding:5px 10px" onclick="markNoticeRead('${n.id}')">既読にする</button>`;
+  return`<div class="mini-card ${cls}" style="margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">${noticeTypeLabel(n)}<span class="link">${esc(n.category||'案内')}</span>${!n.read?'<span class="notify-badge">未読</span>':''}</div>
+    <h3 style="margin:0 0 6px">${esc(n.title)}</h3>
+    <p style="white-space:pre-line;margin:0 0 8px">${esc(n.body)}</p>
+    <div style="display:flex;align-items:center;justify-content:space-between"><small style="color:var(--muted)">${esc((n.created_at||'').slice(0,16).replace('T',' '))}</small>${readBtn}</div>
+  </div>`;
+}
+
+async function markNoticeRead(id){
+  try{
+    await sb.from('user_notifications').update({read:true,read_at:new Date().toISOString()}).eq('id',id);
+    await refreshNoticeBadge();
+    if(currentProfile?.role==='student')studentNotices();
+    if(currentProfile?.role==='company')companyNotices();
+  }catch(e){alert('既読処理エラー：'+e.message)}
+}
+
+async function noticeSummaryBar(role,email,gotoFn){
+  const all=await fetchMyNotices(role,email);
+  const unread=all.filter(x=>!x.read);
+  const allUnread=unread.filter(x=>x.notice_type!=='personal'&&!x.target_email).length;
+  const personalUnread=unread.filter(x=>x.notice_type==='personal'||x.target_email).length;
+  if(unread.length===0)return'<div class="notice-summary-bar"><span class="ns-label">通知</span><span style="font-size:13px;color:var(--muted)">未読の通知はありません ✅</span></div>';
+  return`<div class="notice-summary-bar">
+    <span class="ns-label">未読通知</span>
+    ${allUnread>0?`<span class="ns-chip ns-all" onclick="${gotoFn}()">📢 全体通知 <span class="ns-num">${allUnread}</span> 件</span>`:''}
+    ${personalUnread>0?`<span class="ns-chip ns-personal" onclick="${gotoFn}()">🔔 個別通知 <span class="ns-num">${personalUnread}</span> 件</span>`:''}
+    <button class="secondary" style="font-size:12px;padding:5px 10px;margin:0" onclick="${gotoFn}()">すべて読む →</button>
+  </div>`;
+}
+
+
 async function enablePushNotifications(){
   try{
     if(!('Notification'in window))return alert('この端末は通知に対応していません。');
