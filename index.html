@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SOLA CAREER CENTER V5.6.2</title>
+<title>SOLA CAREER CENTER V5.6.4</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
 /* ===== V5.5.2 チャット返信・求人添付修正：最終上書き ===== */
 function v552RoleLabel(role){
@@ -382,6 +382,438 @@ async function adminOpenChatThread(email){currentAdminChatUser=email;await sb.fr
 async function adminSendChatReply(email){const input=document.getElementById('adminChatReplyInput');const msg=(input?.value||'').trim();if(!msg)return alert('返信内容を入力してください。');const rows=await sb.from('chat_messages').select('*').eq('user_email',email).order('created_at',{ascending:true}).limit(1);const base=(rows.data||[])[0]||{};const old=input.value;input.value='';const r=await sb.from('chat_messages').insert({user_email:email,user_role:base.user_role||'',user_name:base.user_name||'',sender_role:'admin',sender:'admin',message:msg,read_by_admin:true,read_by_user:false});if(r.error){input.value=old;return alert('返信エラー：'+r.error.message)}if(typeof createInAppNotice==='function')await createInAppNotice(null,email,'チャット返信があります',msg,'チャット','personal');await adminOpenChatThread(email)}
 document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{refreshNoticeBadge?.()}catch(e){}},1000));
 
+
+/* ===== V5.6.3 強制修正：Modal・通知・チャット 最終上書き ===== */
+function v563Url(u){
+  const s=String(u||'').trim();
+  if(!s)return '';
+  return (s.startsWith('http://')||s.startsWith('https://'))?s:'https://'+s;
+}
+function v563JobLinks(j){
+  let h='';
+  if(j.attachment_url)h+=`<a target="_blank" href="${esc(j.attachment_url)}">📄 求人票を開く</a>`;
+  if(j.poster_url)h+=`<a target="_blank" href="${esc(j.poster_url)}">🖼️ ポスター・チラシを開く</a>`;
+  if(j.external_url)h+=`<a target="_blank" href="${esc(v563Url(j.external_url))}">🌐 求人URLを開く</a>`;
+  return h?`<div class="v563-job-links">${h}</div>`:'';
+}
+/* 重複しない求人詳細。既存modal側の閉じるボタンだけ使うため、ここでは閉じるボタンを追加しません。 */
+function openJobDetail(el){
+  const j=JSON.parse(el.dataset.job);
+  const kind=el.dataset.kind;
+  const applyBtn=currentProfile?.role==='student'
+    ? `<div style="margin-top:16px"><button onclick="applyJob('${kind}','${esc(j.id)}');closeModal()">この求人に応募する ✋</button></div>`
+    : '';
+  modalContent.innerHTML=`
+    <span class="link">${kind==='career'?'就職支援':'人材派遣'}</span>
+    <h2 style="margin:8px 0 4px">${esc(j.company)}</h2>
+    <p style="margin:0 0 14px;color:var(--muted);font-size:15px;font-weight:800">${esc(j.job_type)}</p>
+    <table style="width:100%;font-size:14px;border-collapse:collapse">
+      <tr><th style="width:110px;background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">勤務地</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.work_place||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">給与</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.pay||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">勤務時間</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.work_time||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">仕事内容</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.work_content||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">応募条件</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.requirements||'—')}</td></tr>
+      ${j.foreigner_ok?`<tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">外国人応募</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.foreigner_ok)}</td></tr>`:''}
+      ${j.japanese_level?`<tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">日本語レベル</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.japanese_level)}</td></tr>`:''}
+    </table>
+    ${v563JobLinks(j)}
+    ${applyBtn}`;
+  modal.classList.add('on');
+  setTimeout(()=>{try{modalContent.scrollTop=0}catch(e){}},30);
+}
+
+/* 通知：数字をクリックしたら通知ページへ移動、既読化 */
+async function v563UnreadNoticeIds(){
+  try{
+    if(!currentProfile?.email)return [];
+    if(typeof fetchMyNotices==='function'){
+      const rows=await fetchMyNotices(currentProfile.role||'',currentProfile.email);
+      return (rows||[]).filter(x=>!x.read).map(x=>x.id);
+    }
+    const role=currentProfile.role||'';
+    const r=await sb.from('user_notifications')
+      .select('id')
+      .or('target_role.eq.all,target_role.eq.'+role+',target_email.eq.'+currentProfile.email)
+      .eq('active',true)
+      .eq('read',false);
+    return (r.data||[]).map(x=>x.id);
+  }catch(e){return []}
+}
+async function openMyNotificationsAndMarkRead(){
+  if(!currentProfile)return;
+  if(currentProfile.role==='student'){
+    showPage('studentPage');
+    await studentNotices();
+  }else if(currentProfile.role==='company'){
+    showPage('companyPage');
+    await companyNotices();
+  }else{
+    return;
+  }
+  setTimeout(async()=>{
+    try{
+      const ids=await v563UnreadNoticeIds();
+      if(ids.length){
+        await sb.from('user_notifications')
+          .update({read:true,read_at:new Date().toISOString()})
+          .in('id',ids);
+      }
+      if(typeof refreshNoticeBadge==='function')await refreshNoticeBadge();
+      if(currentProfile.role==='student')await studentNotices();
+      if(currentProfile.role==='company')await companyNotices();
+    }catch(e){console.warn(e)}
+  },800);
+}
+async function refreshNoticeBadge(){
+  if(!currentProfile)return;
+  let count=0;
+  try{count=(typeof unreadNoticeCount==='function')?await unreadNoticeCount():0}catch(e){}
+  const label=currentProfile.role==='student'?'学生マイページ':currentProfile.role==='company'?'企業マイページ':currentProfile.role==='admin'?'管理者マイページ':'マイページ';
+  myPageBtn.innerHTML=label+(count?'<span class="notify-badge v563-notice-click" title="通知を確認">'+count+'</span>':'');
+  if(count&&(currentProfile.role==='student'||currentProfile.role==='company')){
+    myPageBtn.onclick=openMyNotificationsAndMarkRead;
+  }else{
+    myPageBtn.onclick=goMyPage;
+  }
+}
+/* 捕获点击：包括顶部红点、ダッシュボード未読通知卡片 */
+document.addEventListener('click',function(e){
+  const badge=e.target.closest?.('.notify-badge,.v563-notice-click');
+  if(badge&&currentProfile&&(currentProfile.role==='student'||currentProfile.role==='company')){
+    e.preventDefault();e.stopPropagation();
+    openMyNotificationsAndMarkRead();
+    return false;
+  }
+  const stat=e.target.closest?.('.stat');
+  if(stat){
+    const label=(stat.querySelector('span')?.textContent||'').trim();
+    if(label.includes('未読通知')){
+      e.preventDefault();e.stopPropagation();
+      openMyNotificationsAndMarkRead();
+      return false;
+    }
+  }
+},true);
+
+/* チャット：未読数字・整行クリック・返信を強制修正 */
+function v563RoleLabel(role){
+  if(role==='student')return '<span class="v55-role-badge v55-role-student">学生</span>';
+  if(role==='company')return '<span class="v55-role-badge v55-role-company">企業</span>';
+  if(role==='admin')return '<span class="v55-role-badge v55-role-admin">管理者</span>';
+  return '<span class="v55-role-badge v55-role-unknown">不明</span>';
+}
+async function adminChatManage(){
+  currentAdminChatUser=null;
+  const r=await sb.from('chat_messages').select('*').order('created_at',{ascending:false}).limit(1000);
+  if(r.error){
+    adminContent.innerHTML='<div class="alert err">チャット読込エラー：'+esc(r.error.message)+'</div>';
+    return;
+  }
+  const grouped={};
+  (r.data||[]).forEach(m=>{
+    const email=m.user_email||'';
+    if(!email)return;
+    if(!grouped[email])grouped[email]={email,user_name:m.user_name||'',user_role:m.user_role||'',latest:m,unread:0};
+    if(new Date(m.created_at)>new Date(grouped[email].latest.created_at))grouped[email].latest=m;
+    if((m.sender_role||m.sender)!=='admin'&&!m.read_by_admin)grouped[email].unread++;
+    if(m.user_role)grouped[email].user_role=m.user_role;
+    if(m.user_name)grouped[email].user_name=m.user_name;
+  });
+  const rows=Object.values(grouped).sort((a,b)=>new Date(b.latest.created_at)-new Date(a.latest.created_at));
+  let h='<button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button><h3>チャット管理</h3><div class="alert info">一覧または赤い未読数字をクリックすると、メッセージを確認して返信できます。</div><div class="chat-thread-list">';
+  h+=rows.map(t=>`
+    <div class="chat-thread-item ${t.unread?'has-unread':''}" data-v563-chat-email="${esc(t.email)}">
+      <div class="ct-info">
+        <div class="ct-name">${esc(t.user_name||t.email)} ${v563RoleLabel(t.user_role)}</div>
+        <div class="ct-preview">${esc(t.latest.message||'')}</div>
+        <div class="summary">${esc(t.email)} / ${esc((t.latest.created_at||'').slice(0,16).replace('T',' '))}</div>
+      </div>
+      ${t.unread?`<span class="ct-badge" data-v563-chat-email="${esc(t.email)}">${t.unread}</span>`:''}
+    </div>`).join('');
+  h+='</div>';
+  adminContent.innerHTML=h||'チャットはありません';
+}
+document.addEventListener('click',function(e){
+  const target=e.target.closest?.('[data-v563-chat-email],[data-chat-email]');
+  if(!target)return;
+  const email=target.getAttribute('data-v563-chat-email')||target.getAttribute('data-chat-email');
+  if(email){
+    e.preventDefault();e.stopPropagation();
+    adminOpenChatThread(email);
+    return false;
+  }
+},true);
+async function adminOpenChatThread(email){
+  currentAdminChatUser=email;
+  await sb.from('chat_messages').update({read_by_admin:true}).eq('user_email',email).neq('sender_role','admin');
+  await sb.from('chat_messages').update({read_by_admin:true}).eq('user_email',email).neq('sender','admin');
+  const r=await sb.from('chat_messages').select('*').eq('user_email',email).order('created_at',{ascending:true});
+  if(r.error){
+    adminContent.innerHTML='<div class="alert err">チャット読込エラー：'+esc(r.error.message)+'</div>';
+    return;
+  }
+  const rows=r.data||[];
+  const first=rows.find(x=>(x.sender_role||x.sender)!=='admin')||rows[0]||{};
+  adminContent.innerHTML=`
+    <button class="gray" onclick="adminChatManage()">← チャット一覧へ戻る</button>
+    <h3>チャット返信</h3>
+    <div class="mini-card"><b>${esc(first.user_name||email)}</b> ${v563RoleLabel(first.user_role||'')}<div class="summary">${esc(email)}</div></div>
+    <div class="admin-chat-panel">
+      <div id="adminChatMessages" class="admin-chat-messages">
+        ${rows.map(m=>`<div class="chat-bubble ${(m.sender_role||m.sender)==='admin'?'mine':'theirs'}">${esc(m.message||'')}<div class="cb-time">${esc((m.created_at||'').slice(0,16).replace('T',' '))}</div></div>`).join('')}
+      </div>
+      <div class="admin-chat-input">
+        <input id="adminChatReplyInput" placeholder="返信内容を入力..." onkeydown="if(event.key==='Enter')adminSendChatReply('${esc(email)}')">
+        <button onclick="adminSendChatReply('${esc(email)}')">返信</button>
+      </div>
+    </div>`;
+  const box=document.getElementById('adminChatMessages');
+  if(box)box.scrollTop=box.scrollHeight;
+  if(typeof refreshAdminChatBadge==='function')refreshAdminChatBadge();
+}
+async function adminSendChatReply(email){
+  const input=document.getElementById('adminChatReplyInput');
+  const msg=(input?.value||'').trim();
+  if(!msg)return alert('返信内容を入力してください。');
+  const rows=await sb.from('chat_messages').select('*').eq('user_email',email).order('created_at',{ascending:true}).limit(1);
+  const base=(rows.data||[])[0]||{};
+  const old=input.value;
+  input.value='';
+  const r=await sb.from('chat_messages').insert({
+    user_email:email,
+    user_role:base.user_role||'',
+    user_name:base.user_name||'',
+    sender_role:'admin',
+    sender:'admin',
+    message:msg,
+    read_by_admin:true,
+    read_by_user:false
+  });
+  if(r.error){
+    input.value=old;
+    return alert('返信エラー：'+r.error.message);
+  }
+  if(typeof createInAppNotice==='function')await createInAppNotice(null,email,'チャット返信があります',msg,'チャット','personal');
+  await adminOpenChatThread(email);
+}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{refreshNoticeBadge?.()}catch(e){}},1200));
+
+
+/* ===== V5.6.4 精准クリック修正：現在画面向け最終上書き ===== */
+
+/* 求人詳細：閉じる重複なし、URLを確実にリンク化 */
+function v564Url(u){const s=String(u||'').trim();if(!s)return '';return (s.startsWith('http://')||s.startsWith('https://'))?s:'https://'+s}
+function v564JobLinks(j){
+  let h='';
+  if(j.attachment_url)h+=`<a target="_blank" href="${esc(j.attachment_url)}">📄 求人票を開く</a>`;
+  if(j.poster_url)h+=`<a target="_blank" href="${esc(j.poster_url)}">🖼️ ポスター・チラシを開く</a>`;
+  if(j.external_url)h+=`<a target="_blank" href="${esc(v564Url(j.external_url))}">🌐 求人URLを開く</a>`;
+  return h?`<div class="v564-job-links">${h}</div>`:'';
+}
+function openJobDetail(el){
+  const j=JSON.parse(el.dataset.job);
+  const kind=el.dataset.kind;
+  const applyBtn=currentProfile?.role==='student'?`<div style="margin-top:16px"><button onclick="applyJob('${kind}','${esc(j.id)}');closeModal()">この求人に応募する ✋</button></div>`:'';
+  modalContent.innerHTML=`
+    <span class="link">${kind==='career'?'就職支援':'人材派遣'}</span>
+    <h2 style="margin:8px 0 4px">${esc(j.company)}</h2>
+    <p style="margin:0 0 14px;color:var(--muted);font-size:15px;font-weight:800">${esc(j.job_type)}</p>
+    <table style="width:100%;font-size:14px;border-collapse:collapse">
+      <tr><th style="width:110px;background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">勤務地</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.work_place||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">給与</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.pay||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">勤務時間</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.work_time||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">仕事内容</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.work_content||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">応募条件</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.requirements||'—')}</td></tr>
+      ${j.foreigner_ok?`<tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">外国人応募</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.foreigner_ok)}</td></tr>`:''}
+      ${j.japanese_level?`<tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">日本語レベル</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.japanese_level)}</td></tr>`:''}
+    </table>
+    ${v564JobLinks(j)}
+    ${applyBtn}`;
+  modal.classList.add('on');
+}
+
+/* 通知：現在の学生ページにある「個別通知 5件」「すべて読む→」を確実に処理 */
+async function v564GetUnreadNoticeIds(){
+  try{
+    if(!currentProfile?.email)return [];
+    if(typeof fetchMyNotices==='function'){
+      const rows=await fetchMyNotices(currentProfile.role||'',currentProfile.email);
+      return (rows||[]).filter(x=>!x.read).map(x=>x.id);
+    }
+    const role=currentProfile.role||'';
+    const r=await sb.from('user_notifications')
+      .select('id')
+      .or('target_role.eq.all,target_role.eq.'+role+',target_email.eq.'+currentProfile.email)
+      .eq('active',true)
+      .eq('read',false);
+    return (r.data||[]).map(x=>x.id);
+  }catch(e){console.warn(e);return []}
+}
+async function v564OpenNotifications(markRead=true){
+  if(!currentProfile)return;
+  if(currentProfile.role==='student'){
+    showPage('studentPage');
+    if(typeof studentNotices==='function')await studentNotices();
+  }else if(currentProfile.role==='company'){
+    showPage('companyPage');
+    if(typeof companyNotices==='function')await companyNotices();
+  }else if(currentProfile.role==='admin'){
+    showPage('adminPage');
+    if(typeof adminDashboard==='function')await adminDashboard();
+    return;
+  }else{return;}
+  if(markRead){
+    setTimeout(async()=>{
+      const ids=await v564GetUnreadNoticeIds();
+      if(ids.length){
+        await sb.from('user_notifications').update({read:true,read_at:new Date().toISOString()}).in('id',ids);
+      }
+      if(typeof refreshNoticeBadge==='function')await refreshNoticeBadge();
+      if(currentProfile.role==='student'&&typeof studentNotices==='function')await studentNotices();
+      if(currentProfile.role==='company'&&typeof companyNotices==='function')await companyNotices();
+    },700);
+  }
+}
+async function refreshNoticeBadge(){
+  if(!currentProfile)return;
+  let count=0;
+  try{count=(typeof unreadNoticeCount==='function')?await unreadNoticeCount():0}catch(e){}
+  const label=currentProfile.role==='student'?'学生マイページ':currentProfile.role==='company'?'企業マイページ':currentProfile.role==='admin'?'管理者マイページ':'マイページ';
+  myPageBtn.innerHTML=label+(count?'<span class="notify-badge v564-clickable" data-v564-notice="1">'+count+'</span>':'');
+  if(count&&(currentProfile.role==='student'||currentProfile.role==='company'))myPageBtn.onclick=()=>v564OpenNotifications(true);
+  else myPageBtn.onclick=goMyPage;
+}
+
+/* 捕获所有和通知相关的点击 */
+document.addEventListener('click',function(e){
+  const t=e.target;
+  const text=(t?.innerText||t?.textContent||'').trim();
+  const parentText=(t?.closest?.('div,button,span,section')?.innerText||'').trim();
+  if(
+    t.closest?.('[data-v564-notice],.notify-badge') ||
+    text.includes('すべて読む') ||
+    parentText.includes('個別通知') ||
+    parentText.includes('全体通知') ||
+    parentText.includes('未読通知')
+  ){
+    if(currentProfile&&(currentProfile.role==='student'||currentProfile.role==='company')){
+      e.preventDefault();e.stopPropagation();
+      v564OpenNotifications(true);
+      return false;
+    }
+  }
+},true);
+
+/* チャット：管理者ダッシュボード「チャット管理 2」「未読チャット 2」と右下チャットを確実に処理 */
+function v564RoleLabel(role){
+  if(role==='student')return '<span class="v55-role-badge v55-role-student">学生</span>';
+  if(role==='company')return '<span class="v55-role-badge v55-role-company">企業</span>';
+  if(role==='admin')return '<span class="v55-role-badge v55-role-admin">管理者</span>';
+  return '<span class="v55-role-badge v55-role-unknown">不明</span>';
+}
+async function v564OpenAdminChatList(){
+  showPage('adminPage');
+  await adminChatManage();
+}
+async function adminChatManage(){
+  currentAdminChatUser=null;
+  const r=await sb.from('chat_messages').select('*').order('created_at',{ascending:false}).limit(1000);
+  if(r.error){adminContent.innerHTML='<div class="alert err">チャット読込エラー：'+esc(r.error.message)+'</div>';return;}
+  const grouped={};
+  (r.data||[]).forEach(m=>{
+    const email=m.user_email||'';
+    if(!email)return;
+    if(!grouped[email])grouped[email]={email,user_name:m.user_name||'',user_role:m.user_role||'',latest:m,unread:0};
+    if(new Date(m.created_at)>new Date(grouped[email].latest.created_at))grouped[email].latest=m;
+    if((m.sender_role||m.sender)!=='admin'&&!m.read_by_admin)grouped[email].unread++;
+    if(m.user_role)grouped[email].user_role=m.user_role;
+    if(m.user_name)grouped[email].user_name=m.user_name;
+  });
+  const rows=Object.values(grouped).sort((a,b)=>new Date(b.latest.created_at)-new Date(a.latest.created_at));
+  let h='<button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button><h3>チャット管理</h3><div class="alert info">一覧または赤い未読数字をクリックすると、メッセージを確認して返信できます。</div><div class="chat-thread-list">';
+  h+=rows.map(t=>`
+    <div class="chat-thread-item ${t.unread?'has-unread':''}" data-v564-chat-email="${esc(t.email)}">
+      <div class="ct-info">
+        <div class="ct-name">${esc(t.user_name||t.email)} ${v564RoleLabel(t.user_role)}</div>
+        <div class="ct-preview">${esc(t.latest.message||'')}</div>
+        <div class="summary">${esc(t.email)} / ${esc((t.latest.created_at||'').slice(0,16).replace('T',' '))}</div>
+      </div>
+      ${t.unread?`<span class="ct-badge" data-v564-chat-email="${esc(t.email)}">${t.unread}</span>`:''}
+    </div>`).join('');
+  h+='</div>';
+  adminContent.innerHTML=h||'チャットはありません';
+}
+document.addEventListener('click',function(e){
+  const t=e.target;
+  const text=(t?.innerText||t?.textContent||'').trim();
+  const parentText=(t?.closest?.('div,button,span,section')?.innerText||'').trim();
+  const chatTarget=t.closest?.('[data-v564-chat-email],[data-chat-email]');
+  if(chatTarget){
+    const email=chatTarget.getAttribute('data-v564-chat-email')||chatTarget.getAttribute('data-chat-email');
+    if(email){
+      e.preventDefault();e.stopPropagation();
+      adminOpenChatThread(email);
+      return false;
+    }
+  }
+  if(currentProfile?.role==='admin' && (text.includes('チャット管理') || parentText.includes('未読チャット'))){
+    e.preventDefault();e.stopPropagation();
+    v564OpenAdminChatList();
+    return false;
+  }
+},true);
+async function adminOpenChatThread(email){
+  currentAdminChatUser=email;
+  await sb.from('chat_messages').update({read_by_admin:true}).eq('user_email',email).neq('sender_role','admin');
+  await sb.from('chat_messages').update({read_by_admin:true}).eq('user_email',email).neq('sender','admin');
+  const r=await sb.from('chat_messages').select('*').eq('user_email',email).order('created_at',{ascending:true});
+  if(r.error){adminContent.innerHTML='<div class="alert err">チャット読込エラー：'+esc(r.error.message)+'</div>';return;}
+  const rows=r.data||[];
+  const first=rows.find(x=>(x.sender_role||x.sender)!=='admin')||rows[0]||{};
+  adminContent.innerHTML=`
+    <button class="gray" onclick="adminChatManage()">← チャット一覧へ戻る</button>
+    <h3>チャット返信</h3>
+    <div class="mini-card"><b>${esc(first.user_name||email)}</b> ${v564RoleLabel(first.user_role||'')}<div class="summary">${esc(email)}</div></div>
+    <div class="admin-chat-panel">
+      <div id="adminChatMessages" class="admin-chat-messages">
+        ${rows.map(m=>`<div class="chat-bubble ${(m.sender_role||m.sender)==='admin'?'mine':'theirs'}">${esc(m.message||'')}<div class="cb-time">${esc((m.created_at||'').slice(0,16).replace('T',' '))}</div></div>`).join('')}
+      </div>
+      <div class="admin-chat-input">
+        <input id="adminChatReplyInput" placeholder="返信内容を入力..." onkeydown="if(event.key==='Enter')adminSendChatReply('${esc(email)}')">
+        <button onclick="adminSendChatReply('${esc(email)}')">返信</button>
+      </div>
+    </div>`;
+  const box=document.getElementById('adminChatMessages');
+  if(box)box.scrollTop=box.scrollHeight;
+  if(typeof refreshAdminChatBadge==='function')refreshAdminChatBadge();
+}
+async function adminSendChatReply(email){
+  const input=document.getElementById('adminChatReplyInput');
+  const msg=(input?.value||'').trim();
+  if(!msg)return alert('返信内容を入力してください。');
+  const rows=await sb.from('chat_messages').select('*').eq('user_email',email).order('created_at',{ascending:true}).limit(1);
+  const base=(rows.data||[])[0]||{};
+  const old=input.value;input.value='';
+  const r=await sb.from('chat_messages').insert({user_email:email,user_role:base.user_role||'',user_name:base.user_name||'',sender_role:'admin',sender:'admin',message:msg,read_by_admin:true,read_by_user:false});
+  if(r.error){input.value=old;return alert('返信エラー：'+r.error.message);}
+  if(typeof createInAppNotice==='function')await createInAppNotice(null,email,'チャット返信があります',msg,'チャット','personal');
+  await adminOpenChatThread(email);
+}
+
+/* 学生/企業右下チャット：赤点クリック時はチャットを開く */
+document.addEventListener('click',function(e){
+  const fab=e.target.closest?.('#chatFab,.chat-fab');
+  if(fab && currentProfile && currentProfile.role!=='admin'){
+    if(typeof toggleChat==='function'){
+      e.preventDefault();e.stopPropagation();
+      toggleChat();
+      return false;
+    }
+  }
+},true);
+
+document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{refreshNoticeBadge?.()}catch(e){}},1200));
+
 </script>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#32c904">
@@ -554,6 +986,40 @@ footer{margin-top:28px;padding:16px;background:#f8fafc;text-align:center;border-
 .admin-chat-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:#f8fafc}
 .admin-chat-input{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:#fff}
 .admin-chat-input input{margin:0;flex:1}.admin-chat-input button{margin:0;white-space:nowrap}
+
+
+/* ===== V5.6.3 強制修正：Modal・通知・チャット ===== */
+.modal,#modal,.modal-bg,.modalWrap{overflow-y:auto!important}
+.modal-content,.modal-card,#modalContent,.dialog-content,.popup-content{
+  max-height:88vh!important;
+  overflow-y:auto!important;
+}
+.v563-job-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.v563-job-links a{
+  display:inline-block;padding:7px 12px;border-radius:999px;
+  background:#fef3c7;color:#92400e;text-decoration:none;font-weight:900;font-size:13px
+}
+.notify-badge,.ct-badge,.chat-thread-item,.stat{cursor:pointer!important}
+.admin-chat-panel{display:flex;flex-direction:column;height:520px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff}
+.admin-chat-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:#f8fafc}
+.admin-chat-input{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:#fff}
+.admin-chat-input input{margin:0;flex:1}.admin-chat-input button{margin:0;white-space:nowrap}
+
+
+/* ===== V5.6.4 精准クリック修正 ===== */
+.notify-badge,
+.ct-badge,
+.chat-thread-item,
+.stat,
+#chatFab,
+button,
+.v564-clickable{
+  cursor:pointer!important;
+}
+.v564-job-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.v564-job-links a{display:inline-block;padding:7px 12px;border-radius:999px;background:#fef3c7;color:#92400e;text-decoration:none;font-weight:900;font-size:13px}
+.modal,#modal,.modal-bg,.modalWrap{overflow-y:auto!important}
+.modal-content,.modal-card,#modalContent,.dialog-content,.popup-content{max-height:88vh!important;overflow-y:auto!important}
 
 </style>
 </head>
@@ -2347,6 +2813,438 @@ document.addEventListener('click',function(e){const target=e.target.closest?.('[
 async function adminOpenChatThread(email){currentAdminChatUser=email;await sb.from('chat_messages').update({read_by_admin:true}).eq('user_email',email).neq('sender_role','admin');await sb.from('chat_messages').update({read_by_admin:true}).eq('user_email',email).neq('sender','admin');const r=await sb.from('chat_messages').select('*').eq('user_email',email).order('created_at',{ascending:true});if(r.error){adminContent.innerHTML='<div class="alert err">チャット読込エラー：'+esc(r.error.message)+'</div>';return}const rows=r.data||[];const first=rows.find(x=>(x.sender_role||x.sender)!=='admin')||rows[0]||{};adminContent.innerHTML=`<button class="gray" onclick="adminChatManage()">← チャット一覧へ戻る</button><h3>チャット返信</h3><div class="mini-card"><b>${esc(first.user_name||email)}</b> ${v562RoleLabel(first.user_role||'')}<div class="summary">${esc(email)}</div></div><div class="admin-chat-panel"><div id="adminChatMessages" class="admin-chat-messages">${rows.map(m=>`<div class="chat-bubble ${(m.sender_role||m.sender)==='admin'?'mine':'theirs'}">${esc(m.message||'')}<div class="cb-time">${esc((m.created_at||'').slice(0,16).replace('T',' '))}</div></div>`).join('')}</div><div class="admin-chat-input"><input id="adminChatReplyInput" placeholder="返信内容を入力..." onkeydown="if(event.key==='Enter')adminSendChatReply('${esc(email)}')"><button onclick="adminSendChatReply('${esc(email)}')">返信</button></div></div>`;const box=document.getElementById('adminChatMessages');if(box)box.scrollTop=box.scrollHeight;if(typeof refreshAdminChatBadge==='function')refreshAdminChatBadge()}
 async function adminSendChatReply(email){const input=document.getElementById('adminChatReplyInput');const msg=(input?.value||'').trim();if(!msg)return alert('返信内容を入力してください。');const rows=await sb.from('chat_messages').select('*').eq('user_email',email).order('created_at',{ascending:true}).limit(1);const base=(rows.data||[])[0]||{};const old=input.value;input.value='';const r=await sb.from('chat_messages').insert({user_email:email,user_role:base.user_role||'',user_name:base.user_name||'',sender_role:'admin',sender:'admin',message:msg,read_by_admin:true,read_by_user:false});if(r.error){input.value=old;return alert('返信エラー：'+r.error.message)}if(typeof createInAppNotice==='function')await createInAppNotice(null,email,'チャット返信があります',msg,'チャット','personal');await adminOpenChatThread(email)}
 document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{refreshNoticeBadge?.()}catch(e){}},1000));
+
+
+/* ===== V5.6.3 強制修正：Modal・通知・チャット 最終上書き ===== */
+function v563Url(u){
+  const s=String(u||'').trim();
+  if(!s)return '';
+  return (s.startsWith('http://')||s.startsWith('https://'))?s:'https://'+s;
+}
+function v563JobLinks(j){
+  let h='';
+  if(j.attachment_url)h+=`<a target="_blank" href="${esc(j.attachment_url)}">📄 求人票を開く</a>`;
+  if(j.poster_url)h+=`<a target="_blank" href="${esc(j.poster_url)}">🖼️ ポスター・チラシを開く</a>`;
+  if(j.external_url)h+=`<a target="_blank" href="${esc(v563Url(j.external_url))}">🌐 求人URLを開く</a>`;
+  return h?`<div class="v563-job-links">${h}</div>`:'';
+}
+/* 重複しない求人詳細。既存modal側の閉じるボタンだけ使うため、ここでは閉じるボタンを追加しません。 */
+function openJobDetail(el){
+  const j=JSON.parse(el.dataset.job);
+  const kind=el.dataset.kind;
+  const applyBtn=currentProfile?.role==='student'
+    ? `<div style="margin-top:16px"><button onclick="applyJob('${kind}','${esc(j.id)}');closeModal()">この求人に応募する ✋</button></div>`
+    : '';
+  modalContent.innerHTML=`
+    <span class="link">${kind==='career'?'就職支援':'人材派遣'}</span>
+    <h2 style="margin:8px 0 4px">${esc(j.company)}</h2>
+    <p style="margin:0 0 14px;color:var(--muted);font-size:15px;font-weight:800">${esc(j.job_type)}</p>
+    <table style="width:100%;font-size:14px;border-collapse:collapse">
+      <tr><th style="width:110px;background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">勤務地</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.work_place||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">給与</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.pay||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">勤務時間</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.work_time||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">仕事内容</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.work_content||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">応募条件</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.requirements||'—')}</td></tr>
+      ${j.foreigner_ok?`<tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">外国人応募</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.foreigner_ok)}</td></tr>`:''}
+      ${j.japanese_level?`<tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">日本語レベル</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.japanese_level)}</td></tr>`:''}
+    </table>
+    ${v563JobLinks(j)}
+    ${applyBtn}`;
+  modal.classList.add('on');
+  setTimeout(()=>{try{modalContent.scrollTop=0}catch(e){}},30);
+}
+
+/* 通知：数字をクリックしたら通知ページへ移動、既読化 */
+async function v563UnreadNoticeIds(){
+  try{
+    if(!currentProfile?.email)return [];
+    if(typeof fetchMyNotices==='function'){
+      const rows=await fetchMyNotices(currentProfile.role||'',currentProfile.email);
+      return (rows||[]).filter(x=>!x.read).map(x=>x.id);
+    }
+    const role=currentProfile.role||'';
+    const r=await sb.from('user_notifications')
+      .select('id')
+      .or('target_role.eq.all,target_role.eq.'+role+',target_email.eq.'+currentProfile.email)
+      .eq('active',true)
+      .eq('read',false);
+    return (r.data||[]).map(x=>x.id);
+  }catch(e){return []}
+}
+async function openMyNotificationsAndMarkRead(){
+  if(!currentProfile)return;
+  if(currentProfile.role==='student'){
+    showPage('studentPage');
+    await studentNotices();
+  }else if(currentProfile.role==='company'){
+    showPage('companyPage');
+    await companyNotices();
+  }else{
+    return;
+  }
+  setTimeout(async()=>{
+    try{
+      const ids=await v563UnreadNoticeIds();
+      if(ids.length){
+        await sb.from('user_notifications')
+          .update({read:true,read_at:new Date().toISOString()})
+          .in('id',ids);
+      }
+      if(typeof refreshNoticeBadge==='function')await refreshNoticeBadge();
+      if(currentProfile.role==='student')await studentNotices();
+      if(currentProfile.role==='company')await companyNotices();
+    }catch(e){console.warn(e)}
+  },800);
+}
+async function refreshNoticeBadge(){
+  if(!currentProfile)return;
+  let count=0;
+  try{count=(typeof unreadNoticeCount==='function')?await unreadNoticeCount():0}catch(e){}
+  const label=currentProfile.role==='student'?'学生マイページ':currentProfile.role==='company'?'企業マイページ':currentProfile.role==='admin'?'管理者マイページ':'マイページ';
+  myPageBtn.innerHTML=label+(count?'<span class="notify-badge v563-notice-click" title="通知を確認">'+count+'</span>':'');
+  if(count&&(currentProfile.role==='student'||currentProfile.role==='company')){
+    myPageBtn.onclick=openMyNotificationsAndMarkRead;
+  }else{
+    myPageBtn.onclick=goMyPage;
+  }
+}
+/* 捕获点击：包括顶部红点、ダッシュボード未読通知卡片 */
+document.addEventListener('click',function(e){
+  const badge=e.target.closest?.('.notify-badge,.v563-notice-click');
+  if(badge&&currentProfile&&(currentProfile.role==='student'||currentProfile.role==='company')){
+    e.preventDefault();e.stopPropagation();
+    openMyNotificationsAndMarkRead();
+    return false;
+  }
+  const stat=e.target.closest?.('.stat');
+  if(stat){
+    const label=(stat.querySelector('span')?.textContent||'').trim();
+    if(label.includes('未読通知')){
+      e.preventDefault();e.stopPropagation();
+      openMyNotificationsAndMarkRead();
+      return false;
+    }
+  }
+},true);
+
+/* チャット：未読数字・整行クリック・返信を強制修正 */
+function v563RoleLabel(role){
+  if(role==='student')return '<span class="v55-role-badge v55-role-student">学生</span>';
+  if(role==='company')return '<span class="v55-role-badge v55-role-company">企業</span>';
+  if(role==='admin')return '<span class="v55-role-badge v55-role-admin">管理者</span>';
+  return '<span class="v55-role-badge v55-role-unknown">不明</span>';
+}
+async function adminChatManage(){
+  currentAdminChatUser=null;
+  const r=await sb.from('chat_messages').select('*').order('created_at',{ascending:false}).limit(1000);
+  if(r.error){
+    adminContent.innerHTML='<div class="alert err">チャット読込エラー：'+esc(r.error.message)+'</div>';
+    return;
+  }
+  const grouped={};
+  (r.data||[]).forEach(m=>{
+    const email=m.user_email||'';
+    if(!email)return;
+    if(!grouped[email])grouped[email]={email,user_name:m.user_name||'',user_role:m.user_role||'',latest:m,unread:0};
+    if(new Date(m.created_at)>new Date(grouped[email].latest.created_at))grouped[email].latest=m;
+    if((m.sender_role||m.sender)!=='admin'&&!m.read_by_admin)grouped[email].unread++;
+    if(m.user_role)grouped[email].user_role=m.user_role;
+    if(m.user_name)grouped[email].user_name=m.user_name;
+  });
+  const rows=Object.values(grouped).sort((a,b)=>new Date(b.latest.created_at)-new Date(a.latest.created_at));
+  let h='<button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button><h3>チャット管理</h3><div class="alert info">一覧または赤い未読数字をクリックすると、メッセージを確認して返信できます。</div><div class="chat-thread-list">';
+  h+=rows.map(t=>`
+    <div class="chat-thread-item ${t.unread?'has-unread':''}" data-v563-chat-email="${esc(t.email)}">
+      <div class="ct-info">
+        <div class="ct-name">${esc(t.user_name||t.email)} ${v563RoleLabel(t.user_role)}</div>
+        <div class="ct-preview">${esc(t.latest.message||'')}</div>
+        <div class="summary">${esc(t.email)} / ${esc((t.latest.created_at||'').slice(0,16).replace('T',' '))}</div>
+      </div>
+      ${t.unread?`<span class="ct-badge" data-v563-chat-email="${esc(t.email)}">${t.unread}</span>`:''}
+    </div>`).join('');
+  h+='</div>';
+  adminContent.innerHTML=h||'チャットはありません';
+}
+document.addEventListener('click',function(e){
+  const target=e.target.closest?.('[data-v563-chat-email],[data-chat-email]');
+  if(!target)return;
+  const email=target.getAttribute('data-v563-chat-email')||target.getAttribute('data-chat-email');
+  if(email){
+    e.preventDefault();e.stopPropagation();
+    adminOpenChatThread(email);
+    return false;
+  }
+},true);
+async function adminOpenChatThread(email){
+  currentAdminChatUser=email;
+  await sb.from('chat_messages').update({read_by_admin:true}).eq('user_email',email).neq('sender_role','admin');
+  await sb.from('chat_messages').update({read_by_admin:true}).eq('user_email',email).neq('sender','admin');
+  const r=await sb.from('chat_messages').select('*').eq('user_email',email).order('created_at',{ascending:true});
+  if(r.error){
+    adminContent.innerHTML='<div class="alert err">チャット読込エラー：'+esc(r.error.message)+'</div>';
+    return;
+  }
+  const rows=r.data||[];
+  const first=rows.find(x=>(x.sender_role||x.sender)!=='admin')||rows[0]||{};
+  adminContent.innerHTML=`
+    <button class="gray" onclick="adminChatManage()">← チャット一覧へ戻る</button>
+    <h3>チャット返信</h3>
+    <div class="mini-card"><b>${esc(first.user_name||email)}</b> ${v563RoleLabel(first.user_role||'')}<div class="summary">${esc(email)}</div></div>
+    <div class="admin-chat-panel">
+      <div id="adminChatMessages" class="admin-chat-messages">
+        ${rows.map(m=>`<div class="chat-bubble ${(m.sender_role||m.sender)==='admin'?'mine':'theirs'}">${esc(m.message||'')}<div class="cb-time">${esc((m.created_at||'').slice(0,16).replace('T',' '))}</div></div>`).join('')}
+      </div>
+      <div class="admin-chat-input">
+        <input id="adminChatReplyInput" placeholder="返信内容を入力..." onkeydown="if(event.key==='Enter')adminSendChatReply('${esc(email)}')">
+        <button onclick="adminSendChatReply('${esc(email)}')">返信</button>
+      </div>
+    </div>`;
+  const box=document.getElementById('adminChatMessages');
+  if(box)box.scrollTop=box.scrollHeight;
+  if(typeof refreshAdminChatBadge==='function')refreshAdminChatBadge();
+}
+async function adminSendChatReply(email){
+  const input=document.getElementById('adminChatReplyInput');
+  const msg=(input?.value||'').trim();
+  if(!msg)return alert('返信内容を入力してください。');
+  const rows=await sb.from('chat_messages').select('*').eq('user_email',email).order('created_at',{ascending:true}).limit(1);
+  const base=(rows.data||[])[0]||{};
+  const old=input.value;
+  input.value='';
+  const r=await sb.from('chat_messages').insert({
+    user_email:email,
+    user_role:base.user_role||'',
+    user_name:base.user_name||'',
+    sender_role:'admin',
+    sender:'admin',
+    message:msg,
+    read_by_admin:true,
+    read_by_user:false
+  });
+  if(r.error){
+    input.value=old;
+    return alert('返信エラー：'+r.error.message);
+  }
+  if(typeof createInAppNotice==='function')await createInAppNotice(null,email,'チャット返信があります',msg,'チャット','personal');
+  await adminOpenChatThread(email);
+}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{refreshNoticeBadge?.()}catch(e){}},1200));
+
+
+/* ===== V5.6.4 精准クリック修正：現在画面向け最終上書き ===== */
+
+/* 求人詳細：閉じる重複なし、URLを確実にリンク化 */
+function v564Url(u){const s=String(u||'').trim();if(!s)return '';return (s.startsWith('http://')||s.startsWith('https://'))?s:'https://'+s}
+function v564JobLinks(j){
+  let h='';
+  if(j.attachment_url)h+=`<a target="_blank" href="${esc(j.attachment_url)}">📄 求人票を開く</a>`;
+  if(j.poster_url)h+=`<a target="_blank" href="${esc(j.poster_url)}">🖼️ ポスター・チラシを開く</a>`;
+  if(j.external_url)h+=`<a target="_blank" href="${esc(v564Url(j.external_url))}">🌐 求人URLを開く</a>`;
+  return h?`<div class="v564-job-links">${h}</div>`:'';
+}
+function openJobDetail(el){
+  const j=JSON.parse(el.dataset.job);
+  const kind=el.dataset.kind;
+  const applyBtn=currentProfile?.role==='student'?`<div style="margin-top:16px"><button onclick="applyJob('${kind}','${esc(j.id)}');closeModal()">この求人に応募する ✋</button></div>`:'';
+  modalContent.innerHTML=`
+    <span class="link">${kind==='career'?'就職支援':'人材派遣'}</span>
+    <h2 style="margin:8px 0 4px">${esc(j.company)}</h2>
+    <p style="margin:0 0 14px;color:var(--muted);font-size:15px;font-weight:800">${esc(j.job_type)}</p>
+    <table style="width:100%;font-size:14px;border-collapse:collapse">
+      <tr><th style="width:110px;background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">勤務地</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.work_place||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">給与</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.pay||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">勤務時間</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.work_time||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">仕事内容</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.work_content||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">応募条件</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.requirements||'—')}</td></tr>
+      ${j.foreigner_ok?`<tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">外国人応募</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.foreigner_ok)}</td></tr>`:''}
+      ${j.japanese_level?`<tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">日本語レベル</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.japanese_level)}</td></tr>`:''}
+    </table>
+    ${v564JobLinks(j)}
+    ${applyBtn}`;
+  modal.classList.add('on');
+}
+
+/* 通知：現在の学生ページにある「個別通知 5件」「すべて読む→」を確実に処理 */
+async function v564GetUnreadNoticeIds(){
+  try{
+    if(!currentProfile?.email)return [];
+    if(typeof fetchMyNotices==='function'){
+      const rows=await fetchMyNotices(currentProfile.role||'',currentProfile.email);
+      return (rows||[]).filter(x=>!x.read).map(x=>x.id);
+    }
+    const role=currentProfile.role||'';
+    const r=await sb.from('user_notifications')
+      .select('id')
+      .or('target_role.eq.all,target_role.eq.'+role+',target_email.eq.'+currentProfile.email)
+      .eq('active',true)
+      .eq('read',false);
+    return (r.data||[]).map(x=>x.id);
+  }catch(e){console.warn(e);return []}
+}
+async function v564OpenNotifications(markRead=true){
+  if(!currentProfile)return;
+  if(currentProfile.role==='student'){
+    showPage('studentPage');
+    if(typeof studentNotices==='function')await studentNotices();
+  }else if(currentProfile.role==='company'){
+    showPage('companyPage');
+    if(typeof companyNotices==='function')await companyNotices();
+  }else if(currentProfile.role==='admin'){
+    showPage('adminPage');
+    if(typeof adminDashboard==='function')await adminDashboard();
+    return;
+  }else{return;}
+  if(markRead){
+    setTimeout(async()=>{
+      const ids=await v564GetUnreadNoticeIds();
+      if(ids.length){
+        await sb.from('user_notifications').update({read:true,read_at:new Date().toISOString()}).in('id',ids);
+      }
+      if(typeof refreshNoticeBadge==='function')await refreshNoticeBadge();
+      if(currentProfile.role==='student'&&typeof studentNotices==='function')await studentNotices();
+      if(currentProfile.role==='company'&&typeof companyNotices==='function')await companyNotices();
+    },700);
+  }
+}
+async function refreshNoticeBadge(){
+  if(!currentProfile)return;
+  let count=0;
+  try{count=(typeof unreadNoticeCount==='function')?await unreadNoticeCount():0}catch(e){}
+  const label=currentProfile.role==='student'?'学生マイページ':currentProfile.role==='company'?'企業マイページ':currentProfile.role==='admin'?'管理者マイページ':'マイページ';
+  myPageBtn.innerHTML=label+(count?'<span class="notify-badge v564-clickable" data-v564-notice="1">'+count+'</span>':'');
+  if(count&&(currentProfile.role==='student'||currentProfile.role==='company'))myPageBtn.onclick=()=>v564OpenNotifications(true);
+  else myPageBtn.onclick=goMyPage;
+}
+
+/* 捕获所有和通知相关的点击 */
+document.addEventListener('click',function(e){
+  const t=e.target;
+  const text=(t?.innerText||t?.textContent||'').trim();
+  const parentText=(t?.closest?.('div,button,span,section')?.innerText||'').trim();
+  if(
+    t.closest?.('[data-v564-notice],.notify-badge') ||
+    text.includes('すべて読む') ||
+    parentText.includes('個別通知') ||
+    parentText.includes('全体通知') ||
+    parentText.includes('未読通知')
+  ){
+    if(currentProfile&&(currentProfile.role==='student'||currentProfile.role==='company')){
+      e.preventDefault();e.stopPropagation();
+      v564OpenNotifications(true);
+      return false;
+    }
+  }
+},true);
+
+/* チャット：管理者ダッシュボード「チャット管理 2」「未読チャット 2」と右下チャットを確実に処理 */
+function v564RoleLabel(role){
+  if(role==='student')return '<span class="v55-role-badge v55-role-student">学生</span>';
+  if(role==='company')return '<span class="v55-role-badge v55-role-company">企業</span>';
+  if(role==='admin')return '<span class="v55-role-badge v55-role-admin">管理者</span>';
+  return '<span class="v55-role-badge v55-role-unknown">不明</span>';
+}
+async function v564OpenAdminChatList(){
+  showPage('adminPage');
+  await adminChatManage();
+}
+async function adminChatManage(){
+  currentAdminChatUser=null;
+  const r=await sb.from('chat_messages').select('*').order('created_at',{ascending:false}).limit(1000);
+  if(r.error){adminContent.innerHTML='<div class="alert err">チャット読込エラー：'+esc(r.error.message)+'</div>';return;}
+  const grouped={};
+  (r.data||[]).forEach(m=>{
+    const email=m.user_email||'';
+    if(!email)return;
+    if(!grouped[email])grouped[email]={email,user_name:m.user_name||'',user_role:m.user_role||'',latest:m,unread:0};
+    if(new Date(m.created_at)>new Date(grouped[email].latest.created_at))grouped[email].latest=m;
+    if((m.sender_role||m.sender)!=='admin'&&!m.read_by_admin)grouped[email].unread++;
+    if(m.user_role)grouped[email].user_role=m.user_role;
+    if(m.user_name)grouped[email].user_name=m.user_name;
+  });
+  const rows=Object.values(grouped).sort((a,b)=>new Date(b.latest.created_at)-new Date(a.latest.created_at));
+  let h='<button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button><h3>チャット管理</h3><div class="alert info">一覧または赤い未読数字をクリックすると、メッセージを確認して返信できます。</div><div class="chat-thread-list">';
+  h+=rows.map(t=>`
+    <div class="chat-thread-item ${t.unread?'has-unread':''}" data-v564-chat-email="${esc(t.email)}">
+      <div class="ct-info">
+        <div class="ct-name">${esc(t.user_name||t.email)} ${v564RoleLabel(t.user_role)}</div>
+        <div class="ct-preview">${esc(t.latest.message||'')}</div>
+        <div class="summary">${esc(t.email)} / ${esc((t.latest.created_at||'').slice(0,16).replace('T',' '))}</div>
+      </div>
+      ${t.unread?`<span class="ct-badge" data-v564-chat-email="${esc(t.email)}">${t.unread}</span>`:''}
+    </div>`).join('');
+  h+='</div>';
+  adminContent.innerHTML=h||'チャットはありません';
+}
+document.addEventListener('click',function(e){
+  const t=e.target;
+  const text=(t?.innerText||t?.textContent||'').trim();
+  const parentText=(t?.closest?.('div,button,span,section')?.innerText||'').trim();
+  const chatTarget=t.closest?.('[data-v564-chat-email],[data-chat-email]');
+  if(chatTarget){
+    const email=chatTarget.getAttribute('data-v564-chat-email')||chatTarget.getAttribute('data-chat-email');
+    if(email){
+      e.preventDefault();e.stopPropagation();
+      adminOpenChatThread(email);
+      return false;
+    }
+  }
+  if(currentProfile?.role==='admin' && (text.includes('チャット管理') || parentText.includes('未読チャット'))){
+    e.preventDefault();e.stopPropagation();
+    v564OpenAdminChatList();
+    return false;
+  }
+},true);
+async function adminOpenChatThread(email){
+  currentAdminChatUser=email;
+  await sb.from('chat_messages').update({read_by_admin:true}).eq('user_email',email).neq('sender_role','admin');
+  await sb.from('chat_messages').update({read_by_admin:true}).eq('user_email',email).neq('sender','admin');
+  const r=await sb.from('chat_messages').select('*').eq('user_email',email).order('created_at',{ascending:true});
+  if(r.error){adminContent.innerHTML='<div class="alert err">チャット読込エラー：'+esc(r.error.message)+'</div>';return;}
+  const rows=r.data||[];
+  const first=rows.find(x=>(x.sender_role||x.sender)!=='admin')||rows[0]||{};
+  adminContent.innerHTML=`
+    <button class="gray" onclick="adminChatManage()">← チャット一覧へ戻る</button>
+    <h3>チャット返信</h3>
+    <div class="mini-card"><b>${esc(first.user_name||email)}</b> ${v564RoleLabel(first.user_role||'')}<div class="summary">${esc(email)}</div></div>
+    <div class="admin-chat-panel">
+      <div id="adminChatMessages" class="admin-chat-messages">
+        ${rows.map(m=>`<div class="chat-bubble ${(m.sender_role||m.sender)==='admin'?'mine':'theirs'}">${esc(m.message||'')}<div class="cb-time">${esc((m.created_at||'').slice(0,16).replace('T',' '))}</div></div>`).join('')}
+      </div>
+      <div class="admin-chat-input">
+        <input id="adminChatReplyInput" placeholder="返信内容を入力..." onkeydown="if(event.key==='Enter')adminSendChatReply('${esc(email)}')">
+        <button onclick="adminSendChatReply('${esc(email)}')">返信</button>
+      </div>
+    </div>`;
+  const box=document.getElementById('adminChatMessages');
+  if(box)box.scrollTop=box.scrollHeight;
+  if(typeof refreshAdminChatBadge==='function')refreshAdminChatBadge();
+}
+async function adminSendChatReply(email){
+  const input=document.getElementById('adminChatReplyInput');
+  const msg=(input?.value||'').trim();
+  if(!msg)return alert('返信内容を入力してください。');
+  const rows=await sb.from('chat_messages').select('*').eq('user_email',email).order('created_at',{ascending:true}).limit(1);
+  const base=(rows.data||[])[0]||{};
+  const old=input.value;input.value='';
+  const r=await sb.from('chat_messages').insert({user_email:email,user_role:base.user_role||'',user_name:base.user_name||'',sender_role:'admin',sender:'admin',message:msg,read_by_admin:true,read_by_user:false});
+  if(r.error){input.value=old;return alert('返信エラー：'+r.error.message);}
+  if(typeof createInAppNotice==='function')await createInAppNotice(null,email,'チャット返信があります',msg,'チャット','personal');
+  await adminOpenChatThread(email);
+}
+
+/* 学生/企業右下チャット：赤点クリック時はチャットを開く */
+document.addEventListener('click',function(e){
+  const fab=e.target.closest?.('#chatFab,.chat-fab');
+  if(fab && currentProfile && currentProfile.role!=='admin'){
+    if(typeof toggleChat==='function'){
+      e.preventDefault();e.stopPropagation();
+      toggleChat();
+      return false;
+    }
+  }
+},true);
+
+document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{refreshNoticeBadge?.()}catch(e){}},1200));
 
 </script>
 </body>
