@@ -840,7 +840,7 @@ table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--li
 .user-badge{background:#f1f5f9;color:#334155;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:900}
 .hero-grid{display:grid;grid-template-columns:260px 260px 1fr;gap:16px;margin-bottom:16px}.hero-card{min-height:210px;border-radius:22px;padding:26px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;box-shadow:0 8px 24px rgba(15,23,42,.08);cursor:pointer}.dispatch{background:linear-gradient(135deg,#ecffe4,#f7fff4)}.career{background:linear-gradient(135deg,#eef7ff,#f8fbff)}.hero-icon{font-size:38px}.hero-card h2{font-size:26px}
 .resume-hero{min-height:210px;border-radius:22px;padding:18px;background:#fff;border:1px solid #dbeafe;box-shadow:0 8px 24px rgba(15,23,42,.08);display:grid;grid-template-columns:1fr 230px;gap:16px;align-items:center}.resume-hero h1{margin:0 0 10px;color:#0f3f8f}.qr img{width:100%;max-width:230px;border-radius:12px;display:block;margin:auto}
-.portal-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}.item{display:grid;grid-template-columns:1fr auto;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}.item:last-child{border-bottom:0}.title{font-weight:900}.meta,.summary{font-size:13px;color:var(--muted)}.count-pill{display:inline-block;margin-left:8px;background:#dcfce7;color:#166534;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:900}
+.portal-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}.item{display:grid;grid-template-columns:1fr auto;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}.item:last-child{border-bottom:0}.title{font-weight:900}.meta,.summary{font-size:13px;color:var(--muted)}.count-pill{display:inline-block;margin-left:8px;background:#dcfce7;color:#166534;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:900}.home-hero-btn .count-pill{background:rgba(255,255,255,.28);color:#fff}
 .alumni{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 12px}.alumni-card{flex:0 0 250px;border:1px solid var(--line);border-radius:18px;padding:16px;background:white}
 .role-card{border:2px solid var(--line);border-radius:18px;padding:18px;text-align:center;background:#fff;cursor:pointer}.role-card:hover{border-color:var(--green);box-shadow:0 8px 24px rgba(50,201,4,.12)}.role-card .icon{font-size:38px}.auth-box{border-top:1px solid var(--line);margin-top:18px;padding-top:18px}
 .section-title{margin-top:18px;padding-left:10px;border-left:5px solid var(--green);font-size:18px}.upload-box{background:#f8fafc;border:1px dashed #94a3b8;border-radius:14px;padding:12px;margin:10px 0}.photo-preview{max-width:110px;max-height:140px;border-radius:8px;border:1px solid var(--line);background:#fff}
@@ -1021,6 +1021,164 @@ button,
 .modal,#modal,.modal-bg,.modalWrap{overflow-y:auto!important}
 .modal-content,.modal-card,#modalContent,.dialog-content,.popup-content{max-height:88vh!important;overflow-y:auto!important}
 
+
+/* ===== V5.6.5 ホームリデザイン ===== */
+
+/* --- ヒーローバナー --- */
+.home-hero-banner{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:20px;
+  align-items:center;
+  background:linear-gradient(135deg,#f0fdf4 0%,#e0f2fe 100%);
+  border:1px solid #bfdbfe;
+  border-radius:22px;
+  padding:24px 28px;
+  margin-bottom:16px;
+  box-shadow:0 6px 20px rgba(15,23,42,.07);
+}
+.home-hero-title{font-size:22px;font-weight:900;color:#0f172a;margin-bottom:6px}
+.home-hero-sub{font-size:14px;color:#475569;line-height:1.7;margin-bottom:14px}
+.home-hero-btns{display:flex;gap:10px;flex-wrap:wrap}
+.home-hero-btn{
+  font-size:15px;font-weight:900;padding:11px 18px;border-radius:12px;
+  display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+  border:none;transition:.15s;
+}
+.dispatch-btn{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 4px 14px rgba(34,197,94,.35)}
+.dispatch-btn:hover{filter:brightness(.95);transform:translateY(-1px)}
+.career-btn{background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;box-shadow:0 4px 14px rgba(59,130,246,.35)}
+.career-btn:hover{filter:brightness(.95);transform:translateY(-1px)}
+.home-hero-qr{text-align:center;flex-shrink:0}
+.qr-label{font-size:12px;font-weight:900;color:#0369a1;margin-bottom:6px}
+.home-qr-img{width:100px;height:100px;border-radius:12px;border:2px solid #bfdbfe;display:block;margin:0 auto}
+.qr-sub{font-size:11px;color:#64748b;margin-top:4px}
+
+/* --- メイングリッド --- */
+.home-main-grid{
+  display:grid;
+  grid-template-columns:320px 1fr;
+  gap:16px;
+  margin-bottom:16px;
+  align-items:start;
+}
+.home-col-left,.home-col-right{display:flex;flex-direction:column;gap:14px}
+
+/* --- セクションカード --- */
+.home-section-card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:18px;
+  overflow:hidden;
+  box-shadow:0 4px 14px rgba(15,23,42,.05);
+}
+.home-section-hd{
+  display:flex;align-items:center;gap:8px;
+  padding:13px 16px;
+  border-bottom:1px solid var(--line);
+}
+.notice-hd{background:linear-gradient(90deg,#fff7ed,#fffbeb)}
+.dispatch-hd{background:linear-gradient(90deg,#f0fdf4,#f7fef9)}
+.career-hd{background:linear-gradient(90deg,#eff6ff,#f5f9ff)}
+.home-section-icon{font-size:18px}
+.home-section-title{font-size:15px;font-weight:900;color:#0f172a;flex:1}
+.home-more-btn{
+  font-size:12px;font-weight:700;
+  background:#f1f5f9;color:#334155;
+  border:none;border-radius:8px;
+  padding:5px 10px;cursor:pointer;
+  margin:0;
+}
+.home-more-btn:hover{background:#e2e8f0}
+
+/* --- お知らせアイテム --- */
+.home-notice-item{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:8px;
+  align-items:center;
+  padding:11px 16px;
+  border-bottom:1px solid #f1f5f9;
+  cursor:pointer;
+  transition:.12s;
+}
+.home-notice-item:last-child{border-bottom:0}
+.home-notice-item:hover{background:#fffbf0}
+.hni-cat{
+  font-size:11px;font-weight:900;
+  background:#fed7aa;color:#9a3412;
+  border-radius:6px;padding:3px 7px;
+  white-space:nowrap;
+}
+.hni-important{background:#fecaca;color:#991b1b}
+.hni-title{font-size:13px;font-weight:800;color:#0f172a;line-height:1.4}
+.hni-date{font-size:11px;color:#94a3b8;white-space:nowrap}
+
+/* --- 求人アイテム --- */
+.home-job-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:13px 16px;
+  border-bottom:1px solid #f1f5f9;
+  cursor:pointer;
+  transition:.12s;
+}
+.home-job-item:last-child{border-bottom:0}
+.home-job-item:hover{background:#f0fdf4}
+.hji-left{flex:1;min-width:0}
+.hji-company{font-size:15px;font-weight:900;color:#0f172a;margin-bottom:2px}
+.hji-type{font-size:13px;color:#334155;font-weight:700;margin-bottom:3px}
+.hji-meta{font-size:12px;color:#64748b;margin-bottom:4px}
+.hji-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px}
+.hji-arrow{color:#94a3b8;font-size:22px;font-weight:900;flex-shrink:0}
+.home-job-item:hover .hji-arrow{color:var(--green)}
+
+/* --- バッジ --- */
+.job-badge{
+  display:inline-block;
+  font-size:11px;font-weight:900;
+  border-radius:6px;padding:3px 8px;
+}
+.job-badge.foreign{background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd}
+.job-badge.urgent{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
+
+/* --- 就職先スリム版 --- */
+.home-alumni-wrap{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:18px;
+  overflow:hidden;
+  box-shadow:0 4px 14px rgba(15,23,42,.05);
+  margin-bottom:16px;
+}
+.home-alumni-hd{
+  font-size:14px;font-weight:900;color:#334155;
+  padding:11px 16px;
+  border-bottom:1px solid var(--line);
+  background:#f8fafc;
+}
+.alumni-slim{
+  display:flex;gap:10px;
+  padding:10px 14px;
+  overflow-x:auto;
+  scrollbar-width:thin;
+}
+.alumni-slim .alumni-card{
+  flex:0 0 180px;
+  padding:12px 14px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  font-size:13px;
+}
+
+/* --- レスポンシブ --- */
+@media(max-width:860px){
+  .home-hero-banner{grid-template-columns:1fr;gap:12px;padding:18px}
+  .home-hero-qr{display:none}
+  .home-main-grid{grid-template-columns:1fr}
+  .home-hero-btn{font-size:14px;padding:10px 14px}
+}
 </style>
 </head>
 <body>
@@ -1037,17 +1195,76 @@ button,
 
 <main>
 <section id="home" class="page active">
-  <div class="hero-grid">
-    <div class="hero-card dispatch" onclick="showJobs('dispatch')"><div class="hero-icon">💼</div><h2>人材派遣 <span id="dispatchCount" class="count-pill">0件</span></h2><p>短期・単発のお仕事</p><button>求人を見る →</button></div>
-    <div class="hero-card career" onclick="showJobs('career')"><div class="hero-icon">🏢</div><h2>就職支援 <span id="careerCount" class="count-pill">0件</span></h2><p>正社員・長期のお仕事</p><button>求人を見る →</button></div>
-    <div class="resume-hero"><div><h1>履歴書作成用<br>情報入力フォーム</h1><p>留学生の皆さんは、QRコードから必要情報を入力してください。</p><p class="summary">アルバイト紹介・就職支援・履歴書作成をサポートします。</p></div><div class="qr"><img src="/resume-qr.png" alt="QRコード"><div class="summary" style="text-align:center;margin-top:8px;font-weight:800;">QRコードを読み取って入力してください</div></div></div>
+
+  <!-- ヒーローバナー -->
+  <div class="home-hero-banner">
+    <div class="home-hero-left">
+      <div class="home-hero-title">仕事を探している方へ</div>
+      <div class="home-hero-sub">派遣・就職支援・アルバイト紹介。<br>あなたに合ったお仕事をSOLAが全力サポート。</div>
+      <div class="home-hero-btns">
+        <button class="home-hero-btn dispatch-btn" onclick="showJobs('dispatch')">
+          💼 人材派遣求人を見る <span id="dispatchCount" class="count-pill">0件</span>
+        </button>
+        <button class="home-hero-btn career-btn" onclick="showJobs('career')">
+          🏢 就職支援求人を見る <span id="careerCount" class="count-pill">0件</span>
+        </button>
+      </div>
+    </div>
+    <div class="home-hero-qr">
+      <div class="qr-label">📝 履歴書作成フォーム</div>
+      <img src="/resume-qr.png" alt="QRコード" class="home-qr-img">
+      <div class="qr-sub">QRを読み取って入力</div>
+    </div>
   </div>
-  <div class="portal-grid">
-    <div class="panel"><h2>お知らせ</h2><div id="homeNotices">読込中...</div></div>
-    <div class="panel"><h2>新着求人</h2><div id="homeNewJobs">読込中...</div></div>
-    <div class="panel"><h2>急募・おすすめ求人</h2><div id="homePickupJobs">読込中...</div></div>
+
+  <!-- メインコンテンツグリッド -->
+  <div class="home-main-grid">
+
+    <!-- 左カラム：お知らせ -->
+    <div class="home-col-left">
+      <div class="home-section-card">
+        <div class="home-section-hd notice-hd">
+          <span class="home-section-icon">📢</span>
+          <span class="home-section-title">お知らせ</span>
+        </div>
+        <div id="homeNotices">読込中...</div>
+      </div>
+    </div>
+
+    <!-- 右カラム：新着求人 -->
+    <div class="home-col-right">
+
+      <!-- 新着求人カード -->
+      <div class="home-section-card">
+        <div class="home-section-hd dispatch-hd">
+          <span class="home-section-icon">💼</span>
+          <span class="home-section-title">新着・人材派遣</span>
+          <button class="home-more-btn" onclick="showJobs('dispatch')">もっと見る →</button>
+        </div>
+        <div id="homeNewJobs">読込中...</div>
+      </div>
+
+      <!-- おすすめ求人カード -->
+      <div class="home-section-card">
+        <div class="home-section-hd career-hd">
+          <span class="home-section-icon">🏢</span>
+          <span class="home-section-title">急募・就職支援</span>
+          <button class="home-more-btn" onclick="showJobs('career')">もっと見る →</button>
+        </div>
+        <div id="homePickupJobs">読込中...</div>
+      </div>
+
+    </div>
   </div>
-  <div class="panel"><h2>卒業生の主な就職先</h2><div id="alumni" class="alumni"></div></div>
+
+  <!-- 就職先：コンパクト横スクロール -->
+  <div class="home-alumni-wrap">
+    <div class="home-alumni-hd">
+      <span>🎓 卒業生の主な就職先</span>
+    </div>
+    <div id="alumni" class="alumni alumni-slim"></div>
+  </div>
+
 </section>
 
 <section id="loginPage" class="page"><div class="card">
@@ -2091,15 +2308,33 @@ async function loadHome(){
     const c=await sb.from('career_jobs').select('*').eq('active',true).order('created_at',{ascending:false});
     dispatchCount.textContent=(d.data||[]).length+'件';
     careerCount.textContent=(c.data||[]).length+'件';
-    homeNewJobs.innerHTML=(d.data||[]).slice(0,3).map(j=>`<div class="item" style="cursor:pointer" onclick="openJobDetail(this)" data-job='${JSON.stringify(j).replace(/'/g,"&apos;")}' data-kind="dispatch"><div><div class="meta">💼 NEW・人材派遣</div><div class="title">${esc(j.company)}</div><div class="summary">${esc(j.job_type)}${j.work_place?' / '+esc(j.work_place):''}</div></div><div style="color:var(--blue);font-size:20px;font-weight:900">›</div></div>`).join('')||'<p class="summary">求人はありません</p>';
-    homePickupJobs.innerHTML=(c.data||[]).slice(0,3).map(j=>`<div class="item" style="cursor:pointer" onclick="openJobDetail(this)" data-job='${JSON.stringify(j).replace(/'/g,"&apos;")}' data-kind="career"><div><div class="meta">🏢 PICK UP・就職支援</div><div class="title">${esc(j.company)}</div><div class="summary">${esc(j.job_type)}${j.work_place?' / '+esc(j.work_place):''}</div></div><div style="color:var(--blue);font-size:20px;font-weight:900">›</div></div>`).join('')||'<p class="summary">求人はありません</p>';
-    const n=await sb.from('site_notices').select('*').eq('active',true).order('created_at',{ascending:false}).limit(3);
-    homeNotices.innerHTML=(n.data||[]).map(x=>`<div class="item" style="cursor:pointer" onclick="openNoticeDetail('${x.id}')"><div><div class="meta">${esc(x.category||'案内')}${x.attachment_url?' / 📎添付あり':''}</div><div class="title">${esc(x.title)}</div><div class="summary">${esc((x.body||'').slice(0,55))}</div></div><div>›</div></div>`).join('')||'お知らせはありません';
+    // 求人カード：外国人OKバッジ付き
+    function jobCard(j,kind){
+      const isForeign=j.foreigner_ok&&j.foreigner_ok.trim()&&j.foreigner_ok.trim()!=='不可'&&j.foreigner_ok.trim()!=='×';
+      const isUrgent=j.remaining_quota&&j.remaining_quota<=2;
+      const badges=(isForeign?'<span class="job-badge foreign">🌍 外国人OK</span>':'')+(isUrgent?'<span class="job-badge urgent">🔥 急募</span>':'');
+      return `<div class="home-job-item" onclick="openJobDetail(this)" data-job='${JSON.stringify(j).replace(/'/g,"&apos;")}' data-kind="${kind}">
+        <div class="hji-left">
+          <div class="hji-company">${esc(j.company)}</div>
+          <div class="hji-type">${esc(j.job_type)}</div>
+          <div class="hji-meta">${j.work_place?'📍'+esc(j.work_place):''}${j.pay?' · 💴'+esc(j.pay):''}</div>
+          ${badges?'<div class="hji-badges">'+badges+'</div>':''}
+        </div>
+        <div class="hji-arrow">›</div>
+      </div>`;
+    }
+    homeNewJobs.innerHTML=(d.data||[]).slice(0,4).map(j=>jobCard(j,'dispatch')).join('')||'<p class="summary" style="padding:12px">現在募集中の求人はありません</p>';
+    homePickupJobs.innerHTML=(c.data||[]).slice(0,4).map(j=>jobCard(j,'career')).join('')||'<p class="summary" style="padding:12px">現在募集中の求人はありません</p>';
+    const n=await sb.from('site_notices').select('*').eq('active',true).order('created_at',{ascending:false}).limit(4);
+    homeNotices.innerHTML=(n.data||[]).map(x=>`<div class="home-notice-item" onclick="openNoticeDetail('${x.id}')">
+      <div class="hni-cat ${x.category==='重要'?'hni-important':''}">${esc(x.category||'案内')}${x.attachment_url?' 📎':''}</div>
+      <div class="hni-title">${esc(x.title)}</div>
+      <div class="hni-date">${esc((x.created_at||'').slice(0,10))}</div>
+    </div>`).join('')||'<p class="summary" style="padding:12px">お知らせはありません</p>';
     const a=await sb.from('alumni_companies').select('*').eq('active',true).order('display_order',{ascending:true});
     renderAlumni(a.data||[]);
   }catch(e){console.warn(e);renderAlumni([])}
 }
-
 /* お知らせ配信：添付対応 */
 async function adminNoticeForm(){
   adminContent.innerHTML=`<button class="gray" onclick="adminDashboard()">← 戻る</button><h3>お知らせ配信</h3>
