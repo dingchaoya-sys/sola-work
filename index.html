@@ -828,7 +828,7 @@ header{position:sticky;top:0;z-index:50;background:white;border-bottom:1px solid
 .logo{font-size:23px;font-weight:900;margin-right:auto;white-space:nowrap}.logo span{color:var(--green)}
 button{border:0;border-radius:10px;background:var(--green);color:#fff;padding:9px 13px;font-weight:800;cursor:pointer;margin:2px}button:hover{filter:brightness(.98)}
 .secondary{background:#e0f2fe;color:#0369a1}.gray{background:#f1f5f9;color:#334155}.red{background:#dc2626}.yellow{background:#fef9c3;color:#854d0e}.blue{background:var(--blue)}
-main{max-width:1180px;margin:12px auto;padding:0 12px}.page{display:none}.page.active{display:block}
+main{max-width:1180px;margin:8px auto 0;padding:0 12px}.page{display:none}.page.active{display:block}
 .card,.panel,.job,.stat,.box,.mini-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 4px 14px rgba(15,23,42,.05)}
 input,textarea,select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;margin:5px 0 12px;font:inherit;background:#fff}textarea{min-height:90px}label{font-weight:800;font-size:13px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}.three{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
@@ -847,8 +847,8 @@ table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--li
 .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}.stat span{font-size:12px;color:var(--muted)}.stat b{display:block;font-size:30px;color:var(--green);margin-top:5px}
 .interview-row{border-left:5px solid var(--blue);padding-left:12px}.offer-row{border-left:5px solid var(--green);padding-left:12px}.favorite-btn{background:#fef9c3!important;color:#854d0e!important}
 .modal{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px}.modal.on{display:flex}.modal-panel{background:#fff;border-radius:20px;max-width:620px;width:100%;max-height:86vh;overflow:auto;padding:20px;box-shadow:0 30px 70px rgba(0,0,0,.28)}
-.install-btn{position:fixed;right:18px;bottom:24px;z-index:200}.mobile-nav{display:none}.resume-print{background:#fff;border:1px solid #111;padding:18px;margin-top:16px}.resume-print h1{text-align:center;letter-spacing:.35em}.resume-print th,.resume-print td{border:1px solid #333}
-footer{margin-top:28px;padding:16px;background:#f8fafc;text-align:center;border-top:2px solid var(--green);font-size:13px;color:#475569;line-height:1.8}
+.install-btn{position:fixed;right:18px;bottom:16px;z-index:200}.mobile-nav{display:none}.resume-print{background:#fff;border:1px solid #111;padding:18px;margin-top:16px}.resume-print h1{text-align:center;letter-spacing:.35em}.resume-print th,.resume-print td{border:1px solid #333}
+footer{margin-top:16px;padding:8px 16px;background:#f8fafc;border-top:1px solid var(--line);font-size:12px;color:#94a3b8;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 14px}
 @media(max-width:860px){.hero-grid,.portal-grid,.resume-hero,.row,.three{grid-template-columns:1fr}header .logo{width:100%;font-size:20px}.desktop-only{display:none!important}body{padding-bottom:78px}.mobile-nav{position:fixed;left:0;right:0;bottom:0;z-index:99;display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(15,23,42,.1)}.mobile-nav button{border-radius:0;background:#fff;color:#334155;margin:0;padding:8px 2px;font-size:11px}.install-btn{bottom:82px;right:10px}}
 @media print{body *{visibility:hidden!important}#resumePrintArea,#resumePrintArea *{visibility:visible!important}#resumePrintArea{position:absolute;left:0;top:0;width:100%;margin:0!important;border:none!important}header,footer,button{display:none!important}}
 
@@ -1033,7 +1033,7 @@ button,
   border:1px solid #bfdbfe;
   border-radius:18px;
   padding:18px 24px;
-  margin-bottom:14px;
+  margin-bottom:12px;
   box-shadow:0 4px 16px rgba(15,23,42,.06);
 }
 .home-hero-left{flex:1}
@@ -1061,7 +1061,7 @@ button,
   display:grid;
   grid-template-columns:1fr 1fr 1fr;
   gap:14px;
-  margin-bottom:14px;
+  margin-bottom:12px;
   align-items:start;
 }
 
@@ -1159,7 +1159,7 @@ button,
   border-radius:14px;
   overflow:hidden;
   box-shadow:0 3px 12px rgba(15,23,42,.04);
-  margin-bottom:14px;
+  margin-bottom:6px;
 }
 .home-alumni-hd{
   font-size:12px;font-weight:900;color:#64748b;
@@ -1339,7 +1339,7 @@ button,
 <div id="modal" class="modal"><div class="modal-panel"><button class="gray" onclick="closeModal()">閉じる</button><div id="modalContent"></div></div></div>
 <div id="installModal" class="modal"><div class="modal-panel"><button class="gray" onclick="closeInstallGuide()">閉じる</button><h2>アプリとして使う方法</h2><h3>パソコン</h3><p>Chrome / Edge のアドレスバー右側のインストールアイコン、または右上メニューから「アプリをインストール」を選択してください。</p><h3>iPhone</h3><p>Safariで開き、共有ボタンから「ホーム画面に追加」を選択してください。</p><h3>Android</h3><p>Chromeで開き、メニューから「アプリをインストール」を選択してください。</p></div></div>
 
-<footer><div style="font-weight:900">学校法人SOLA学園 キャリアセンター</div><div>留学生就職・アルバイト支援プラットフォーム</div><div>プラットフォーム管理責任者：丁 超亜（テイ チョウア）</div><div>© 2026 SOLA学園</div></footer>
+<footer><span style="font-weight:900;color:#475569">学校法人SOLA学園 キャリアセンター</span><span>留学生就職・アルバイト支援プラットフォーム</span><span>管理責任者：丁 超亜（テイ チョウア）</span><span>お問い合わせ：<a href="mailto:choa_tei@sola.ac.jp" style="color:#0369a1;text-decoration:none">choa_tei@sola.ac.jp</a></span><span>© 2026 SOLA学園</span></footer>
 
 <script>
 const SUPABASE_URL="https://yhwdmlvzzrnvnnxapsfr.supabase.co",SUPABASE_ANON_KEY="sb_publishable_8ZhlfQc5zqU6xNEFduzymA__aBsJyzf";
