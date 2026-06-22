@@ -1024,137 +1024,146 @@ button,
 
 /* ===== V5.6.5 ホームリデザイン ===== */
 
-/* --- ヒーローバナー --- */
+/* --- ヒーロー帯（1行シンプル） --- */
 .home-hero-banner{
-  display:grid;
-  grid-template-columns:1fr auto;
-  gap:20px;
+  display:flex;
   align-items:center;
+  gap:20px;
   background:linear-gradient(135deg,#f0fdf4 0%,#e0f2fe 100%);
   border:1px solid #bfdbfe;
-  border-radius:22px;
-  padding:24px 28px;
-  margin-bottom:16px;
-  box-shadow:0 6px 20px rgba(15,23,42,.07);
+  border-radius:18px;
+  padding:18px 24px;
+  margin-bottom:14px;
+  box-shadow:0 4px 16px rgba(15,23,42,.06);
 }
-.home-hero-title{font-size:22px;font-weight:900;color:#0f172a;margin-bottom:6px}
-.home-hero-sub{font-size:14px;color:#475569;line-height:1.7;margin-bottom:14px}
-.home-hero-btns{display:flex;gap:10px;flex-wrap:wrap}
+.home-hero-left{flex:1}
+.home-hero-title{font-size:19px;font-weight:900;color:#0f172a;margin-bottom:4px}
+.home-hero-sub{font-size:13px;color:#475569;margin-bottom:12px;line-height:1.6}
+.home-hero-btns{display:flex;gap:8px;flex-wrap:wrap}
 .home-hero-btn{
-  font-size:15px;font-weight:900;padding:11px 18px;border-radius:12px;
-  display:inline-flex;align-items:center;gap:8px;cursor:pointer;
-  border:none;transition:.15s;
+  font-size:14px;font-weight:900;
+  padding:9px 16px;border-radius:10px;
+  display:inline-flex;align-items:center;gap:6px;
+  cursor:pointer;border:none;transition:.15s;white-space:nowrap;
 }
-.dispatch-btn{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 4px 14px rgba(34,197,94,.35)}
+.dispatch-btn{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 3px 10px rgba(34,197,94,.30)}
 .dispatch-btn:hover{filter:brightness(.95);transform:translateY(-1px)}
-.career-btn{background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;box-shadow:0 4px 14px rgba(59,130,246,.35)}
+.career-btn{background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;box-shadow:0 3px 10px rgba(59,130,246,.30)}
 .career-btn:hover{filter:brightness(.95);transform:translateY(-1px)}
+.home-hero-btn .count-pill{background:rgba(255,255,255,.30);color:#fff;font-size:11px}
 .home-hero-qr{text-align:center;flex-shrink:0}
-.qr-label{font-size:12px;font-weight:900;color:#0369a1;margin-bottom:6px}
-.home-qr-img{width:100px;height:100px;border-radius:12px;border:2px solid #bfdbfe;display:block;margin:0 auto}
-.qr-sub{font-size:11px;color:#64748b;margin-top:4px}
+.qr-label{font-size:11px;font-weight:900;color:#0369a1;margin-bottom:5px}
+.home-qr-img{width:88px;height:88px;border-radius:10px;border:2px solid #bfdbfe;display:block;margin:0 auto}
+.qr-sub{font-size:10px;color:#64748b;margin-top:4px}
 
-/* --- メイングリッド --- */
-.home-main-grid{
+/* --- 3カラムグリッド --- */
+.home-three-grid{
   display:grid;
-  grid-template-columns:320px 1fr;
-  gap:16px;
-  margin-bottom:16px;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:14px;
+  margin-bottom:14px;
   align-items:start;
 }
-.home-col-left,.home-col-right{display:flex;flex-direction:column;gap:14px}
 
 /* --- セクションカード --- */
 .home-section-card{
   background:#fff;
   border:1px solid var(--line);
-  border-radius:18px;
+  border-radius:16px;
   overflow:hidden;
-  box-shadow:0 4px 14px rgba(15,23,42,.05);
+  box-shadow:0 3px 12px rgba(15,23,42,.05);
+  display:flex;
+  flex-direction:column;
+  min-height:260px;
 }
 .home-section-hd{
-  display:flex;align-items:center;gap:8px;
-  padding:13px 16px;
-  border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:7px;
+  padding:11px 14px;
+  border-bottom:2px solid var(--line);
+  flex-shrink:0;
 }
-.notice-hd{background:linear-gradient(90deg,#fff7ed,#fffbeb)}
-.dispatch-hd{background:linear-gradient(90deg,#f0fdf4,#f7fef9)}
-.career-hd{background:linear-gradient(90deg,#eff6ff,#f5f9ff)}
-.home-section-icon{font-size:18px}
-.home-section-title{font-size:15px;font-weight:900;color:#0f172a;flex:1}
+.notice-hd{background:#fffbeb;border-bottom-color:#fde68a}
+.dispatch-hd{background:#f0fdf4;border-bottom-color:#bbf7d0}
+.career-hd{background:#eff6ff;border-bottom-color:#bfdbfe}
+.home-section-icon{font-size:16px}
+.home-section-title{font-size:14px;font-weight:900;color:#0f172a;flex:1}
 .home-more-btn{
-  font-size:12px;font-weight:700;
-  background:#f1f5f9;color:#334155;
-  border:none;border-radius:8px;
-  padding:5px 10px;cursor:pointer;
-  margin:0;
+  font-size:11px;font-weight:700;
+  background:transparent;color:#64748b;
+  border:1px solid #e2e8f0;border-radius:7px;
+  padding:4px 9px;cursor:pointer;margin:0;
+  white-space:nowrap;
 }
-.home-more-btn:hover{background:#e2e8f0}
+.home-more-btn:hover{background:#f1f5f9;color:#334155}
 
 /* --- お知らせアイテム --- */
 .home-notice-item{
   display:grid;
   grid-template-columns:auto 1fr auto;
   gap:8px;
-  align-items:center;
-  padding:11px 16px;
+  align-items:start;
+  padding:10px 14px;
   border-bottom:1px solid #f1f5f9;
   cursor:pointer;
-  transition:.12s;
+  transition:.1s;
 }
 .home-notice-item:last-child{border-bottom:0}
 .home-notice-item:hover{background:#fffbf0}
 .hni-cat{
-  font-size:11px;font-weight:900;
+  font-size:10px;font-weight:900;
+  border-radius:5px;padding:2px 6px;
+  white-space:nowrap;margin-top:2px;
   background:#fed7aa;color:#9a3412;
-  border-radius:6px;padding:3px 7px;
-  white-space:nowrap;
 }
 .hni-important{background:#fecaca;color:#991b1b}
-.hni-title{font-size:13px;font-weight:800;color:#0f172a;line-height:1.4}
-.hni-date{font-size:11px;color:#94a3b8;white-space:nowrap}
+.hni-info{background:#dbeafe;color:#1e40af}
+.hni-title{font-size:13px;font-weight:700;color:#0f172a;line-height:1.4}
+.hni-date{font-size:10px;color:#94a3b8;white-space:nowrap;margin-top:3px}
 
 /* --- 求人アイテム --- */
 .home-job-item{
   display:flex;
   align-items:center;
-  gap:10px;
-  padding:13px 16px;
+  gap:8px;
+  padding:11px 14px;
   border-bottom:1px solid #f1f5f9;
   cursor:pointer;
-  transition:.12s;
+  transition:.1s;
 }
 .home-job-item:last-child{border-bottom:0}
 .home-job-item:hover{background:#f0fdf4}
 .hji-left{flex:1;min-width:0}
-.hji-company{font-size:15px;font-weight:900;color:#0f172a;margin-bottom:2px}
-.hji-type{font-size:13px;color:#334155;font-weight:700;margin-bottom:3px}
-.hji-meta{font-size:12px;color:#64748b;margin-bottom:4px}
-.hji-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px}
-.hji-arrow{color:#94a3b8;font-size:22px;font-weight:900;flex-shrink:0}
+.hji-company{font-size:14px;font-weight:900;color:#0f172a;margin-bottom:1px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hji-type{font-size:12px;color:#334155;font-weight:600;margin-bottom:3px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hji-meta{font-size:11px;color:#64748b;margin-bottom:3px}
+.hji-badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px}
+.hji-arrow{color:#cbd5e1;font-size:20px;font-weight:900;flex-shrink:0;line-height:1}
 .home-job-item:hover .hji-arrow{color:var(--green)}
+.home-job-empty{padding:20px 14px;text-align:center;color:#94a3b8;font-size:13px}
 
 /* --- バッジ --- */
 .job-badge{
-  display:inline-block;
-  font-size:11px;font-weight:900;
-  border-radius:6px;padding:3px 8px;
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:10px;font-weight:900;
+  border-radius:5px;padding:2px 7px;
 }
 .job-badge.foreign{background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd}
 .job-badge.urgent{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
 
-/* --- 就職先スリム版 --- */
+/* --- 就職先スリム --- */
 .home-alumni-wrap{
   background:#fff;
   border:1px solid var(--line);
-  border-radius:18px;
+  border-radius:16px;
   overflow:hidden;
-  box-shadow:0 4px 14px rgba(15,23,42,.05);
-  margin-bottom:16px;
+  box-shadow:0 3px 12px rgba(15,23,42,.04);
+  margin-bottom:14px;
 }
 .home-alumni-hd{
-  font-size:14px;font-weight:900;color:#334155;
-  padding:11px 16px;
+  font-size:13px;font-weight:900;color:#334155;
+  padding:9px 14px;
   border-bottom:1px solid var(--line);
   background:#f8fafc;
 }
@@ -1165,19 +1174,21 @@ button,
   scrollbar-width:thin;
 }
 .alumni-slim .alumni-card{
-  flex:0 0 180px;
-  padding:12px 14px;
-  border-radius:12px;
+  flex:0 0 160px;
+  padding:10px 12px;
+  border-radius:10px;
   border:1px solid var(--line);
-  font-size:13px;
+  font-size:12px;
 }
 
+/* count-pill inside hero btn */
+.count-pill{display:inline-block;margin-left:4px;background:#dcfce7;color:#166534;border-radius:999px;padding:2px 7px;font-size:11px;font-weight:900}
+
 /* --- レスポンシブ --- */
-@media(max-width:860px){
-  .home-hero-banner{grid-template-columns:1fr;gap:12px;padding:18px}
-  .home-hero-qr{display:none}
-  .home-main-grid{grid-template-columns:1fr}
-  .home-hero-btn{font-size:14px;padding:10px 14px}
+@media(max-width:900px){
+  .home-three-grid{grid-template-columns:1fr}
+  .home-hero-banner{padding:14px 16px}
+  .home-hero-title{font-size:16px}
 }
 </style>
 </head>
@@ -1196,72 +1207,64 @@ button,
 <main>
 <section id="home" class="page active">
 
-  <!-- ヒーローバナー -->
+  <!-- ヒーロー：シンプル帯 -->
   <div class="home-hero-banner">
     <div class="home-hero-left">
       <div class="home-hero-title">仕事を探している方へ</div>
-      <div class="home-hero-sub">派遣・就職支援・アルバイト紹介。<br>あなたに合ったお仕事をSOLAが全力サポート。</div>
+      <div class="home-hero-sub">派遣・就職支援・アルバイト紹介。あなたに合ったお仕事をSOLAが全力サポート。</div>
       <div class="home-hero-btns">
         <button class="home-hero-btn dispatch-btn" onclick="showJobs('dispatch')">
-          💼 人材派遣求人を見る <span id="dispatchCount" class="count-pill">0件</span>
+          💼 人材派遣 <span id="dispatchCount" class="count-pill">0件</span>
         </button>
         <button class="home-hero-btn career-btn" onclick="showJobs('career')">
-          🏢 就職支援求人を見る <span id="careerCount" class="count-pill">0件</span>
+          🏢 就職支援 <span id="careerCount" class="count-pill">0件</span>
         </button>
       </div>
     </div>
     <div class="home-hero-qr">
       <div class="qr-label">📝 履歴書作成フォーム</div>
       <img src="/resume-qr.png" alt="QRコード" class="home-qr-img">
-      <div class="qr-sub">QRを読み取って入力</div>
+      <div class="qr-sub">QRコードを読み取って入力</div>
     </div>
   </div>
 
-  <!-- メインコンテンツグリッド -->
-  <div class="home-main-grid">
+  <!-- 3カラムグリッド -->
+  <div class="home-three-grid">
 
-    <!-- 左カラム：お知らせ -->
-    <div class="home-col-left">
-      <div class="home-section-card">
-        <div class="home-section-hd notice-hd">
-          <span class="home-section-icon">📢</span>
-          <span class="home-section-title">お知らせ</span>
-        </div>
-        <div id="homeNotices">読込中...</div>
+    <!-- お知らせ -->
+    <div class="home-section-card">
+      <div class="home-section-hd notice-hd">
+        <span class="home-section-icon">📢</span>
+        <span class="home-section-title">お知らせ</span>
       </div>
+      <div id="homeNotices">読込中...</div>
     </div>
 
-    <!-- 右カラム：新着求人 -->
-    <div class="home-col-right">
-
-      <!-- 新着求人カード -->
-      <div class="home-section-card">
-        <div class="home-section-hd dispatch-hd">
-          <span class="home-section-icon">💼</span>
-          <span class="home-section-title">新着・人材派遣</span>
-          <button class="home-more-btn" onclick="showJobs('dispatch')">もっと見る →</button>
-        </div>
-        <div id="homeNewJobs">読込中...</div>
+    <!-- 新着・人材派遣 -->
+    <div class="home-section-card">
+      <div class="home-section-hd dispatch-hd">
+        <span class="home-section-icon">💼</span>
+        <span class="home-section-title">新着・人材派遣</span>
+        <button class="home-more-btn" onclick="showJobs('dispatch')">もっと見る →</button>
       </div>
-
-      <!-- おすすめ求人カード -->
-      <div class="home-section-card">
-        <div class="home-section-hd career-hd">
-          <span class="home-section-icon">🏢</span>
-          <span class="home-section-title">急募・就職支援</span>
-          <button class="home-more-btn" onclick="showJobs('career')">もっと見る →</button>
-        </div>
-        <div id="homePickupJobs">読込中...</div>
-      </div>
-
+      <div id="homeNewJobs">読込中...</div>
     </div>
+
+    <!-- 急募・就職支援 -->
+    <div class="home-section-card">
+      <div class="home-section-hd career-hd">
+        <span class="home-section-icon">🏢</span>
+        <span class="home-section-title">急募・就職支援</span>
+        <button class="home-more-btn" onclick="showJobs('career')">もっと見る →</button>
+      </div>
+      <div id="homePickupJobs">読込中...</div>
+    </div>
+
   </div>
 
   <!-- 就職先：コンパクト横スクロール -->
   <div class="home-alumni-wrap">
-    <div class="home-alumni-hd">
-      <span>🎓 卒業生の主な就職先</span>
-    </div>
+    <div class="home-alumni-hd"><span>🎓 卒業生の主な就職先</span></div>
     <div id="alumni" class="alumni alumni-slim"></div>
   </div>
 
@@ -2323,14 +2326,17 @@ async function loadHome(){
         <div class="hji-arrow">›</div>
       </div>`;
     }
-    homeNewJobs.innerHTML=(d.data||[]).slice(0,4).map(j=>jobCard(j,'dispatch')).join('')||'<p class="summary" style="padding:12px">現在募集中の求人はありません</p>';
-    homePickupJobs.innerHTML=(c.data||[]).slice(0,4).map(j=>jobCard(j,'career')).join('')||'<p class="summary" style="padding:12px">現在募集中の求人はありません</p>';
+    homeNewJobs.innerHTML=(d.data||[]).slice(0,4).map(j=>jobCard(j,'dispatch')).join('')||'<div class="home-job-empty">現在募集中の求人はありません</div>';
+    homePickupJobs.innerHTML=(c.data||[]).slice(0,4).map(j=>jobCard(j,'career')).join('')||'<div class="home-job-empty">現在募集中の求人はありません</div>';
     const n=await sb.from('site_notices').select('*').eq('active',true).order('created_at',{ascending:false}).limit(4);
-    homeNotices.innerHTML=(n.data||[]).map(x=>`<div class="home-notice-item" onclick="openNoticeDetail('${x.id}')">
-      <div class="hni-cat ${x.category==='重要'?'hni-important':''}">${esc(x.category||'案内')}${x.attachment_url?' 📎':''}</div>
-      <div class="hni-title">${esc(x.title)}</div>
-      <div class="hni-date">${esc((x.created_at||'').slice(0,10))}</div>
-    </div>`).join('')||'<p class="summary" style="padding:12px">お知らせはありません</p>';
+    homeNotices.innerHTML=(n.data||[]).map(x=>{
+      const catCls=x.category==='重要'?'hni-important':x.category==='案内'?'hni-info':'';
+      return `<div class="home-notice-item" onclick="openNoticeDetail('${x.id}')">
+        <div class="hni-cat ${catCls}">${esc(x.category||'案内')}${x.attachment_url?' 📎':''}</div>
+        <div class="hni-title">${esc(x.title)}</div>
+        <div class="hni-date">${esc((x.created_at||'').slice(0,10))}</div>
+      </div>`;
+    }).join('')||'<div class="home-job-empty">お知らせはありません</div>';
     const a=await sb.from('alumni_companies').select('*').eq('active',true).order('display_order',{ascending:true});
     renderAlumni(a.data||[]);
   }catch(e){console.warn(e);renderAlumni([])}
