@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SOLA CAREER CENTER V7.1 企業版完善修正版</title>
+<title>SOLA CAREER CENTER V7.2 企業情報センター</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
 /* ===== V5.5.2 チャット返信・求人添付修正：最終上書き ===== */
 function v552RoleLabel(role){
@@ -1086,6 +1086,294 @@ try{
   }
 }catch(e){}
 
+
+/* ===== SOLA CAREER CENTER V7.2 企業情報センター：最終上書き ===== */
+function v72SafeUrl(u){
+  const s=String(u||'').trim();
+  if(!s)return '';
+  return (s.startsWith('http://')||s.startsWith('https://'))?s:'https://'+s;
+}
+function v72Logo(url, big=false){
+  if(url)return `<img class="${big?'v72-logo':'v72-job-logo'}" src="${esc(url)}" onerror="this.outerHTML='<div class=&quot;${big?'v72-logo-empty':'v72-job-logo-empty'}&quot;>🏢</div>'">`;
+  return `<div class="${big?'v72-logo-empty':'v72-job-logo-empty'}">🏢</div>`;
+}
+function v72Tags(j){
+  let h='';
+  if(String(j.foreigner_ok||'').includes('可'))h+='<span class="v72-tag green">外国人OK</span>';
+  if(String(j.requirements||j.work_content||'').includes('急募'))h+='<span class="v72-tag red">急募</span>';
+  if(j.japanese_level)h+=`<span class="v72-tag">${esc(j.japanese_level)}</span>`;
+  if(j.created_by_role==='company')h+='<span class="v72-tag orange">企業投稿</span>';
+  return h?`<div class="v72-tags">${h}</div>`:'';
+}
+function v72Links(j){
+  let h='';
+  if(j.attachment_url)h+=`<a target="_blank" class="link" href="${esc(j.attachment_url)}">📄 求人票</a> `;
+  if(j.poster_url)h+=`<a target="_blank" class="link" href="${esc(j.poster_url)}">🖼️ ポスター</a> `;
+  if(j.external_url)h+=`<a target="_blank" class="link" href="${esc(v72SafeUrl(j.external_url))}">🌐 求人URL</a> `;
+  if(j.company_website)h+=`<a target="_blank" class="link" href="${esc(v72SafeUrl(j.company_website))}">🏢 企業HP</a> `;
+  return h?`<div style="margin-top:8px">${h}</div>`:'';
+}
+async function v72GetCompany(){
+  try{
+    const id=await cid();
+    const r=await sb.from('companies').select('*').eq('id',id).maybeSingle();
+    return r.data||{id,email:currentProfile?.email,company_name:''};
+  }catch(e){
+    return {id:null,email:currentProfile?.email,company_name:currentProfile?.name||''};
+  }
+}
+
+/* 企業情報ページ */
+async function companyProfileSettings(){
+  const c=await v72GetCompany();
+  companyContent.innerHTML=`
+    <button class="gray" onclick="companyDashboard()">← 戻る</button>
+    <h3>企業情報</h3>
+    <div class="alert info">ここで登録した企業名・ロゴ・紹介文は、すべての求人カードと応募画面に自動表示されます。</div>
+    <div class="v72-profile-card">
+      ${v72Logo(c.logo_url,true)}
+      <div>
+        <h3>${esc(c.company_name||'企業名未登録')}</h3>
+        <p>${esc(c.company_intro||'企業紹介は未登録です。')}</p>
+        ${c.company_website?`<p><a class="link" target="_blank" href="${esc(v72SafeUrl(c.company_website))}">企業ホームページ</a></p>`:''}
+      </div>
+    </div>
+    <div class="v72-section-title">企業基本情報</div>
+    <label>企業名（必須）</label>
+    <input id="v72CompanyName" value="${esc(c.company_name||c.name||'')}" placeholder="例：株式会社 寺子屋">
+    <div class="v72-form-grid">
+      <div>
+        <label>企業ロゴ（任意）</label>
+        <input id="v72CompanyLogo" type="file" accept="image/*">
+        <div class="summary">現在：${c.logo_url?`<a class="link" target="_blank" href="${esc(c.logo_url)}">ロゴを見る</a>`:'未登録'}</div>
+      </div>
+      <div>
+        <label>企業ホームページ（任意）</label>
+        <input id="v72CompanyWebsite" value="${esc(c.company_website||'')}" placeholder="https://...">
+      </div>
+    </div>
+    <div class="v72-form-grid">
+      <div><label>担当者名（任意）</label><input id="v72ContactName" value="${esc(c.contact_name||'')}"></div>
+      <div><label>電話番号（任意）</label><input id="v72CompanyPhone" value="${esc(c.phone||'')}"></div>
+    </div>
+    <label>企業紹介（任意）</label>
+    <textarea id="v72CompanyIntro" placeholder="企業の特徴、事業内容、留学生へのメッセージなど">${esc(c.company_intro||'')}</textarea>
+    <input type="hidden" id="v72OldLogo" value="${esc(c.logo_url||'')}">
+    <button onclick="saveCompanyProfileSettings()">企業情報を保存する</button>`;
+}
+async function saveCompanyProfileSettings(){
+  try{
+    const c=await v72GetCompany();
+    let logo_url=v('v72OldLogo');
+    if(document.getElementById('v72CompanyLogo')?.files?.[0])logo_url=await upload('v72CompanyLogo','company-logos','companylogo');
+    const p={
+      company_name:v('v72CompanyName')||currentProfile.email,
+      logo_url,
+      company_website:v('v72CompanyWebsite'),
+      contact_name:v('v72ContactName'),
+      phone:v('v72CompanyPhone'),
+      company_intro:v('v72CompanyIntro')
+    };
+    let r;
+    if(c.id)r=await sb.from('companies').update(p).eq('id',c.id);
+    else r=await sb.from('companies').insert({...p,email:currentProfile.email,approved:true}).select('*').single();
+    if(r.error)throw r.error;
+
+    /* 既存の自社求人にも企業情報を反映 */
+    const newCompanyName=p.company_name;
+    await sb.from('dispatch_jobs').update({company:newCompanyName,company_logo_url:logo_url,logo_url,company_intro:p.company_intro,company_website:p.company_website}).eq('company_email',currentProfile.email);
+    await sb.from('career_jobs').update({company:newCompanyName,company_logo_url:logo_url,logo_url,company_intro:p.company_intro,company_website:p.company_website}).eq('company_email',currentProfile.email);
+
+    alert('企業情報を保存しました。既存の自社求人にも反映しました。');
+    companyProfileSettings();
+  }catch(e){alert('企業情報保存エラー：'+e.message)}
+}
+
+/* 企業ダッシュボード：企業情報ボタンを追加 */
+async function companyDashboard(){
+  showPage('companyPage');
+  companyInfo.textContent=currentProfile.email;
+  const comp=await v72GetCompany();
+  const cidSafe=comp.id||'00000000-0000-0000-0000-000000000000';
+  const d=await sb.from('dispatch_jobs').select('id').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`);
+  const c=await sb.from('career_jobs').select('id').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`);
+  const apps=typeof v70LoadCompanyApplications==='function'?await v70LoadCompanyApplications():[];
+  const summaryBar=typeof noticeSummaryBar==='function'?await noticeSummaryBar('company',currentProfile.email,'companyNotices'):'';
+  companyContent.innerHTML=summaryBar+`
+    <h3>ダッシュボード</h3>
+    <div class="v72-profile-card">
+      ${v72Logo(comp.logo_url,true)}
+      <div>
+        <h3>${esc(comp.company_name||'企業名未登録')}</h3>
+        <p>${esc(comp.company_intro||'企業紹介は未登録です。')}</p>
+        <p><button class="secondary" onclick="companyProfileSettings()">企業情報を編集</button></p>
+      </div>
+    </div>
+    <div class="kpi">
+      <div class="stat"><span>自社求人</span><b>${(d.data||[]).length+(c.data||[]).length}</b></div>
+      <div class="stat"><span>応募者</span><b>${apps.length}</b></div>
+      <div class="stat"><span>面接待ち</span><b>${apps.filter(x=>/面接|学生確認待ち/.test(x.process_status||x.status||'')).length}</b></div>
+    </div>
+    <div class="v70-toolbar">
+      <button onclick="companyJobForm()">求人追加</button>
+      <button class="secondary" onclick="companyJobs()">自社求人管理</button>
+      <button class="secondary" onclick="companyApplicants()">応募者管理</button>
+      <button class="secondary" onclick="companyInterviews()">面接管理</button>
+      <button class="secondary" onclick="companyNotices()">通知</button>
+      <button class="secondary" onclick="companyProfileSettings()">企業情報</button>
+    </div>`;
+  await refreshNoticeBadge?.();
+}
+
+/* 求人フォーム：企業名入力を削除し、企業情報から自動読込 */
+async function companyJobForm(kind='dispatch',id=''){
+  const comp=await v72GetCompany();
+  if(!comp.company_name){
+    if(confirm('求人を作成する前に企業名を登録してください。企業情報ページへ移動しますか？')){
+      return companyProfileSettings();
+    }
+  }
+  companyContent.innerHTML=`
+    <button class="gray" onclick="companyJobs()">← 自社求人へ戻る</button>
+    <h3>${id?'自社求人編集':'自社求人追加'}</h3>
+    <div class="v72-profile-card">
+      ${v72Logo(comp.logo_url,true)}
+      <div>
+        <h3>${esc(comp.company_name||'企業名未登録')}</h3>
+        <p>${esc(comp.company_intro||'企業紹介は未登録です。')}</p>
+        <button class="secondary" onclick="companyProfileSettings()">企業情報を変更する</button>
+      </div>
+    </div>
+    <div class="alert info">求人の会社名は企業情報から自動表示されます。変更する場合は「企業情報」を編集してください。</div>
+
+    <div class="v72-section-title">求人情報</div>
+    <label>求人区分</label>
+    <select id="cjkind"><option value="dispatch">人材派遣・アルバイト</option><option value="career">就職支援</option></select>
+    <div class="v72-form-grid">
+      <div><label>募集職種</label><input id="cjtype"></div>
+      <div><label>募集人数</label><input id="cjquota" type="number" value="1"></div>
+    </div>
+    <label>仕事内容</label><textarea id="cjwork"></textarea>
+    <div class="v72-form-grid">
+      <div><label>勤務地</label><input id="cjplace"></div>
+      <div><label>給与</label><input id="cjpay"></div>
+    </div>
+    <div class="v72-form-grid">
+      <div><label>勤務時間</label><input id="cjtime"></div>
+      <div><label>外国人応募</label><select id="cjForeign"><option>可</option><option>相談</option><option>不可</option></select></div>
+    </div>
+    <div class="v72-form-grid">
+      <div><label>日本語レベル</label><input id="cjJapanese" placeholder="N3以上、N4相談可など"></div>
+      <div><label>公開状態</label><select id="cjActive"><option value="true">公開</option><option value="false">非公開</option></select></div>
+    </div>
+    <label>応募条件</label><textarea id="cjrequirements"></textarea>
+    <div class="v72-section-title">添付・URL（任意）</div>
+    <label>求人票ファイル</label><input id="cjAttachment" type="file">
+    <label>ポスター・チラシ</label><input id="cjPoster" type="file" accept="image/*,.pdf">
+    <label>求人URL</label><input id="cjUrl" placeholder="https://...">
+    <input type="hidden" id="cjEditKind" value="${kind}">
+    <input type="hidden" id="cjEditId" value="${id}">
+    <button onclick="companySaveJobV72(false)">保存して公開</button>
+    <button class="yellow" onclick="companySaveJobV72(true)">下書き保存</button>`;
+  cjkind.value=kind||'dispatch';
+  if(id)await companyLoadJobForEditV72(kind,id);
+}
+async function companyLoadJobForEditV72(kind,id){
+  const r=await sb.from(kind==='career'?'career_jobs':'dispatch_jobs').select('*').eq('id',id).maybeSingle();
+  const j=r.data;if(!j)return;
+  cjkind.value=kind;cjtype.value=j.job_type||'';cjquota.value=j.quota||1;cjwork.value=j.work_content||'';cjplace.value=j.work_place||'';cjpay.value=j.pay||'';cjtime.value=j.work_time||'';cjForeign.value=j.foreigner_ok||'可';cjJapanese.value=j.japanese_level||'';cjActive.value=String(j.active!==false);cjrequirements.value=j.requirements||'';cjUrl.value=j.external_url||'';
+}
+async function companySaveJobV72(draft){
+  try{
+    const comp=await v72GetCompany();
+    if(!comp.company_name)return alert('企業名が未登録です。先に企業情報を登録してください。');
+    const oldKind=v('cjEditKind')||v('cjkind'), id=v('cjEditId');
+    const kind=v('cjkind'), tab=kind==='career'?'career_jobs':'dispatch_jobs';
+    let attachment_url='',poster_url='';
+    if(id&&oldKind===kind){
+      const old=await sb.from(tab).select('*').eq('id',id).maybeSingle();
+      attachment_url=old.data?.attachment_url||'';poster_url=old.data?.poster_url||'';
+    }
+    if(document.getElementById('cjAttachment')?.files?.[0])attachment_url=await upload('cjAttachment','job-attachments','companyjob');
+    if(document.getElementById('cjPoster')?.files?.[0])poster_url=await upload('cjPoster','job-posters','companyposter');
+    const q=Number(v('cjquota')||1);
+    const p={
+      company_id:comp.id,
+      company_email:currentProfile.email,
+      company:comp.company_name,
+      company_logo_url:comp.logo_url||'',
+      logo_url:comp.logo_url||'',
+      company_intro:comp.company_intro||'',
+      company_website:comp.company_website||'',
+      job_type:v('cjtype')||'未入力職種',
+      work_content:v('cjwork'),
+      work_place:v('cjplace'),
+      pay:v('cjpay'),
+      work_time:v('cjtime'),
+      requirements:v('cjrequirements'),
+      foreigner_ok:v('cjForeign'),
+      japanese_level:v('cjJapanese'),
+      quota:q,
+      remaining_quota:q,
+      active:!draft && v('cjActive')==='true',
+      approval_status:'承認済',
+      created_by_role:'company',
+      application_route:'企業へ直接送信',
+      attachment_url,
+      poster_url,
+      external_url:v('cjUrl')
+    };
+    let r;
+    if(id&&oldKind===kind)r=await sb.from(tab).update(p).eq('id',id);
+    else{
+      if(id&&oldKind!==kind)await sb.from(oldKind==='career'?'career_jobs':'dispatch_jobs').delete().eq('id',id);
+      r=await sb.from(tab).insert(p);
+    }
+    if(r.error)throw r.error;
+    alert(draft?'下書きを保存しました。':'求人を保存しました。');
+    companyJobs();
+  }catch(e){alert('求人保存エラー：'+e.message)}
+}
+
+/* 企業自社求人一覧 */
+async function companyJobs(){
+  const comp=await v72GetCompany();
+  const cidSafe=comp.id||'00000000-0000-0000-0000-000000000000';
+  const d=await sb.from('dispatch_jobs').select('*').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`).order('created_at',{ascending:false});
+  const c=await sb.from('career_jobs').select('*').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`).order('created_at',{ascending:false});
+  const rows=[...(d.data||[]).map(j=>({...j,_kind:'dispatch'})),...(c.data||[]).map(j=>({...j,_kind:'career'}))];
+  companyContent.innerHTML=`<button class="gray" onclick="companyDashboard()">← 戻る</button>
+    <h3>自社求人管理</h3>
+    <div class="v72-profile-card">
+      ${v72Logo(comp.logo_url,true)}
+      <div><h3>${esc(comp.company_name||'企業名未登録')}</h3><p>${esc(comp.company_intro||'企業紹介は未登録です。')}</p>${comp.company_website?`<p><a class="link" target="_blank" href="${esc(v72SafeUrl(comp.company_website))}">企業ホームページ</a></p>`:''}</div>
+    </div>
+    <div class="v70-toolbar"><button onclick="companyJobForm()">求人追加</button><button class="secondary" onclick="companyProfileSettings()">企業情報を編集</button></div>`+
+    (rows.map(j=>jobCard(j,j._kind,false,true)).join('')||'<div class="v72-job-card">自社求人はありません。</div>');
+}
+
+/* 求人カード：企業名・ロゴを必ず表示 */
+function jobCard(j,k,apply=false,manage=false){
+  let h=`<div class="v72-job-card">
+    <div class="v72-job-top">${v72Logo(j.company_logo_url||j.logo_url)}
+      <div><h3>${esc(j.company||'企業名未設定')}</h3><div class="v72-job-title">${esc(j.job_type||'職種未設定')}</div></div>
+    </div>
+    ${v72Tags(j)}
+    <div class="v72-meta">📍 ${esc(j.work_place||'勤務地未設定')}　💴 ${esc(j.pay||'給与未設定')}　🕒 ${esc(j.work_time||'')}</div>
+    <p>${esc((j.work_content||'').slice(0,100))}${(j.work_content||'').length>100?'...':''}</p>
+    ${v72Links(j)}
+    <div class="v70-toolbar">
+      <button class="secondary" onclick="openJobDetail(this)" data-job='${JSON.stringify(j).replace(/'/g,"&apos;")}' data-kind="${k}">詳細</button>`;
+  if(apply)h+=`<button onclick="applyJob('${k}','${j.id}')">応募する</button><button class="favorite-btn" onclick="toggleJobFavorite('${k}','${j.id}')">★ お気に入り</button>`;
+  if(manage)h+=`<button onclick="companyJobForm('${k}','${j.id}')">編集</button><button class="red" onclick="deleteJob('${k}','${j.id}')">削除</button>`;
+  return h+'</div></div>';
+}
+
+/* 企業設定ページが旧設定だった場合も企業情報へ誘導 */
+async function companySettings(){
+  return companyProfileSettings();
+}
+
 </script>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#32c904">
@@ -1507,6 +1795,25 @@ button,
 .v71-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .v71-detail-company{display:flex;align-items:center;gap:12px;margin:10px 0 16px}
 @media(max-width:860px){.v71-form-grid{grid-template-columns:1fr}.v71-job-top{align-items:flex-start}}
+
+
+/* ===== SOLA CAREER CENTER V7.2 企業情報センター ===== */
+.v72-profile-card{display:flex;gap:16px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 5px 18px rgba(15,23,42,.06)}
+.v72-logo{width:82px;height:82px;border-radius:18px;border:1px solid var(--line);object-fit:contain;background:#fff}
+.v72-logo-empty{width:82px;height:82px;border-radius:18px;background:#e0f2fe;border:1px solid #bae6fd;display:flex;align-items:center;justify-content:center;font-size:36px}
+.v72-profile-card h3{margin:0 0 6px}.v72-profile-card p{margin:3px 0;color:var(--muted);font-size:13px;line-height:1.5}
+.v72-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.v72-section-title{border-left:5px solid var(--green);padding-left:12px;margin:18px 0 10px;font-weight:900;font-size:18px}
+.v72-job-card{border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:0 5px 18px rgba(15,23,42,.06);padding:14px;margin:12px 0}
+.v72-job-top{display:flex;gap:12px;align-items:center}
+.v72-job-logo{width:54px;height:54px;border-radius:13px;border:1px solid var(--line);object-fit:contain;background:#fff}
+.v72-job-logo-empty{width:54px;height:54px;border-radius:13px;background:#eff6ff;border:1px solid #dbeafe;display:flex;align-items:center;justify-content:center;font-size:24px}
+.v72-job-card h3{margin:0;font-size:18px}.v72-job-title{font-weight:900;margin-top:3px}
+.v72-meta{font-size:13px;color:var(--muted);margin:8px 0}
+.v72-tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.v72-tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:900;background:#e0f2fe;color:#0369a1}
+.v72-tag.green{background:#dcfce7;color:#15803d}.v72-tag.red{background:#fee2e2;color:#dc2626}.v72-tag.orange{background:#ffedd5;color:#c2410c}
+@media(max-width:860px){.v72-form-grid{grid-template-columns:1fr}.v72-profile-card{flex-direction:column}}
 
 </style>
 </head>
@@ -4086,6 +4393,294 @@ try{
     }catch(e){alert('応募エラー：'+e.message)}
   }
 }catch(e){}
+
+
+/* ===== SOLA CAREER CENTER V7.2 企業情報センター：最終上書き ===== */
+function v72SafeUrl(u){
+  const s=String(u||'').trim();
+  if(!s)return '';
+  return (s.startsWith('http://')||s.startsWith('https://'))?s:'https://'+s;
+}
+function v72Logo(url, big=false){
+  if(url)return `<img class="${big?'v72-logo':'v72-job-logo'}" src="${esc(url)}" onerror="this.outerHTML='<div class=&quot;${big?'v72-logo-empty':'v72-job-logo-empty'}&quot;>🏢</div>'">`;
+  return `<div class="${big?'v72-logo-empty':'v72-job-logo-empty'}">🏢</div>`;
+}
+function v72Tags(j){
+  let h='';
+  if(String(j.foreigner_ok||'').includes('可'))h+='<span class="v72-tag green">外国人OK</span>';
+  if(String(j.requirements||j.work_content||'').includes('急募'))h+='<span class="v72-tag red">急募</span>';
+  if(j.japanese_level)h+=`<span class="v72-tag">${esc(j.japanese_level)}</span>`;
+  if(j.created_by_role==='company')h+='<span class="v72-tag orange">企業投稿</span>';
+  return h?`<div class="v72-tags">${h}</div>`:'';
+}
+function v72Links(j){
+  let h='';
+  if(j.attachment_url)h+=`<a target="_blank" class="link" href="${esc(j.attachment_url)}">📄 求人票</a> `;
+  if(j.poster_url)h+=`<a target="_blank" class="link" href="${esc(j.poster_url)}">🖼️ ポスター</a> `;
+  if(j.external_url)h+=`<a target="_blank" class="link" href="${esc(v72SafeUrl(j.external_url))}">🌐 求人URL</a> `;
+  if(j.company_website)h+=`<a target="_blank" class="link" href="${esc(v72SafeUrl(j.company_website))}">🏢 企業HP</a> `;
+  return h?`<div style="margin-top:8px">${h}</div>`:'';
+}
+async function v72GetCompany(){
+  try{
+    const id=await cid();
+    const r=await sb.from('companies').select('*').eq('id',id).maybeSingle();
+    return r.data||{id,email:currentProfile?.email,company_name:''};
+  }catch(e){
+    return {id:null,email:currentProfile?.email,company_name:currentProfile?.name||''};
+  }
+}
+
+/* 企業情報ページ */
+async function companyProfileSettings(){
+  const c=await v72GetCompany();
+  companyContent.innerHTML=`
+    <button class="gray" onclick="companyDashboard()">← 戻る</button>
+    <h3>企業情報</h3>
+    <div class="alert info">ここで登録した企業名・ロゴ・紹介文は、すべての求人カードと応募画面に自動表示されます。</div>
+    <div class="v72-profile-card">
+      ${v72Logo(c.logo_url,true)}
+      <div>
+        <h3>${esc(c.company_name||'企業名未登録')}</h3>
+        <p>${esc(c.company_intro||'企業紹介は未登録です。')}</p>
+        ${c.company_website?`<p><a class="link" target="_blank" href="${esc(v72SafeUrl(c.company_website))}">企業ホームページ</a></p>`:''}
+      </div>
+    </div>
+    <div class="v72-section-title">企業基本情報</div>
+    <label>企業名（必須）</label>
+    <input id="v72CompanyName" value="${esc(c.company_name||c.name||'')}" placeholder="例：株式会社 寺子屋">
+    <div class="v72-form-grid">
+      <div>
+        <label>企業ロゴ（任意）</label>
+        <input id="v72CompanyLogo" type="file" accept="image/*">
+        <div class="summary">現在：${c.logo_url?`<a class="link" target="_blank" href="${esc(c.logo_url)}">ロゴを見る</a>`:'未登録'}</div>
+      </div>
+      <div>
+        <label>企業ホームページ（任意）</label>
+        <input id="v72CompanyWebsite" value="${esc(c.company_website||'')}" placeholder="https://...">
+      </div>
+    </div>
+    <div class="v72-form-grid">
+      <div><label>担当者名（任意）</label><input id="v72ContactName" value="${esc(c.contact_name||'')}"></div>
+      <div><label>電話番号（任意）</label><input id="v72CompanyPhone" value="${esc(c.phone||'')}"></div>
+    </div>
+    <label>企業紹介（任意）</label>
+    <textarea id="v72CompanyIntro" placeholder="企業の特徴、事業内容、留学生へのメッセージなど">${esc(c.company_intro||'')}</textarea>
+    <input type="hidden" id="v72OldLogo" value="${esc(c.logo_url||'')}">
+    <button onclick="saveCompanyProfileSettings()">企業情報を保存する</button>`;
+}
+async function saveCompanyProfileSettings(){
+  try{
+    const c=await v72GetCompany();
+    let logo_url=v('v72OldLogo');
+    if(document.getElementById('v72CompanyLogo')?.files?.[0])logo_url=await upload('v72CompanyLogo','company-logos','companylogo');
+    const p={
+      company_name:v('v72CompanyName')||currentProfile.email,
+      logo_url,
+      company_website:v('v72CompanyWebsite'),
+      contact_name:v('v72ContactName'),
+      phone:v('v72CompanyPhone'),
+      company_intro:v('v72CompanyIntro')
+    };
+    let r;
+    if(c.id)r=await sb.from('companies').update(p).eq('id',c.id);
+    else r=await sb.from('companies').insert({...p,email:currentProfile.email,approved:true}).select('*').single();
+    if(r.error)throw r.error;
+
+    /* 既存の自社求人にも企業情報を反映 */
+    const newCompanyName=p.company_name;
+    await sb.from('dispatch_jobs').update({company:newCompanyName,company_logo_url:logo_url,logo_url,company_intro:p.company_intro,company_website:p.company_website}).eq('company_email',currentProfile.email);
+    await sb.from('career_jobs').update({company:newCompanyName,company_logo_url:logo_url,logo_url,company_intro:p.company_intro,company_website:p.company_website}).eq('company_email',currentProfile.email);
+
+    alert('企業情報を保存しました。既存の自社求人にも反映しました。');
+    companyProfileSettings();
+  }catch(e){alert('企業情報保存エラー：'+e.message)}
+}
+
+/* 企業ダッシュボード：企業情報ボタンを追加 */
+async function companyDashboard(){
+  showPage('companyPage');
+  companyInfo.textContent=currentProfile.email;
+  const comp=await v72GetCompany();
+  const cidSafe=comp.id||'00000000-0000-0000-0000-000000000000';
+  const d=await sb.from('dispatch_jobs').select('id').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`);
+  const c=await sb.from('career_jobs').select('id').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`);
+  const apps=typeof v70LoadCompanyApplications==='function'?await v70LoadCompanyApplications():[];
+  const summaryBar=typeof noticeSummaryBar==='function'?await noticeSummaryBar('company',currentProfile.email,'companyNotices'):'';
+  companyContent.innerHTML=summaryBar+`
+    <h3>ダッシュボード</h3>
+    <div class="v72-profile-card">
+      ${v72Logo(comp.logo_url,true)}
+      <div>
+        <h3>${esc(comp.company_name||'企業名未登録')}</h3>
+        <p>${esc(comp.company_intro||'企業紹介は未登録です。')}</p>
+        <p><button class="secondary" onclick="companyProfileSettings()">企業情報を編集</button></p>
+      </div>
+    </div>
+    <div class="kpi">
+      <div class="stat"><span>自社求人</span><b>${(d.data||[]).length+(c.data||[]).length}</b></div>
+      <div class="stat"><span>応募者</span><b>${apps.length}</b></div>
+      <div class="stat"><span>面接待ち</span><b>${apps.filter(x=>/面接|学生確認待ち/.test(x.process_status||x.status||'')).length}</b></div>
+    </div>
+    <div class="v70-toolbar">
+      <button onclick="companyJobForm()">求人追加</button>
+      <button class="secondary" onclick="companyJobs()">自社求人管理</button>
+      <button class="secondary" onclick="companyApplicants()">応募者管理</button>
+      <button class="secondary" onclick="companyInterviews()">面接管理</button>
+      <button class="secondary" onclick="companyNotices()">通知</button>
+      <button class="secondary" onclick="companyProfileSettings()">企業情報</button>
+    </div>`;
+  await refreshNoticeBadge?.();
+}
+
+/* 求人フォーム：企業名入力を削除し、企業情報から自動読込 */
+async function companyJobForm(kind='dispatch',id=''){
+  const comp=await v72GetCompany();
+  if(!comp.company_name){
+    if(confirm('求人を作成する前に企業名を登録してください。企業情報ページへ移動しますか？')){
+      return companyProfileSettings();
+    }
+  }
+  companyContent.innerHTML=`
+    <button class="gray" onclick="companyJobs()">← 自社求人へ戻る</button>
+    <h3>${id?'自社求人編集':'自社求人追加'}</h3>
+    <div class="v72-profile-card">
+      ${v72Logo(comp.logo_url,true)}
+      <div>
+        <h3>${esc(comp.company_name||'企業名未登録')}</h3>
+        <p>${esc(comp.company_intro||'企業紹介は未登録です。')}</p>
+        <button class="secondary" onclick="companyProfileSettings()">企業情報を変更する</button>
+      </div>
+    </div>
+    <div class="alert info">求人の会社名は企業情報から自動表示されます。変更する場合は「企業情報」を編集してください。</div>
+
+    <div class="v72-section-title">求人情報</div>
+    <label>求人区分</label>
+    <select id="cjkind"><option value="dispatch">人材派遣・アルバイト</option><option value="career">就職支援</option></select>
+    <div class="v72-form-grid">
+      <div><label>募集職種</label><input id="cjtype"></div>
+      <div><label>募集人数</label><input id="cjquota" type="number" value="1"></div>
+    </div>
+    <label>仕事内容</label><textarea id="cjwork"></textarea>
+    <div class="v72-form-grid">
+      <div><label>勤務地</label><input id="cjplace"></div>
+      <div><label>給与</label><input id="cjpay"></div>
+    </div>
+    <div class="v72-form-grid">
+      <div><label>勤務時間</label><input id="cjtime"></div>
+      <div><label>外国人応募</label><select id="cjForeign"><option>可</option><option>相談</option><option>不可</option></select></div>
+    </div>
+    <div class="v72-form-grid">
+      <div><label>日本語レベル</label><input id="cjJapanese" placeholder="N3以上、N4相談可など"></div>
+      <div><label>公開状態</label><select id="cjActive"><option value="true">公開</option><option value="false">非公開</option></select></div>
+    </div>
+    <label>応募条件</label><textarea id="cjrequirements"></textarea>
+    <div class="v72-section-title">添付・URL（任意）</div>
+    <label>求人票ファイル</label><input id="cjAttachment" type="file">
+    <label>ポスター・チラシ</label><input id="cjPoster" type="file" accept="image/*,.pdf">
+    <label>求人URL</label><input id="cjUrl" placeholder="https://...">
+    <input type="hidden" id="cjEditKind" value="${kind}">
+    <input type="hidden" id="cjEditId" value="${id}">
+    <button onclick="companySaveJobV72(false)">保存して公開</button>
+    <button class="yellow" onclick="companySaveJobV72(true)">下書き保存</button>`;
+  cjkind.value=kind||'dispatch';
+  if(id)await companyLoadJobForEditV72(kind,id);
+}
+async function companyLoadJobForEditV72(kind,id){
+  const r=await sb.from(kind==='career'?'career_jobs':'dispatch_jobs').select('*').eq('id',id).maybeSingle();
+  const j=r.data;if(!j)return;
+  cjkind.value=kind;cjtype.value=j.job_type||'';cjquota.value=j.quota||1;cjwork.value=j.work_content||'';cjplace.value=j.work_place||'';cjpay.value=j.pay||'';cjtime.value=j.work_time||'';cjForeign.value=j.foreigner_ok||'可';cjJapanese.value=j.japanese_level||'';cjActive.value=String(j.active!==false);cjrequirements.value=j.requirements||'';cjUrl.value=j.external_url||'';
+}
+async function companySaveJobV72(draft){
+  try{
+    const comp=await v72GetCompany();
+    if(!comp.company_name)return alert('企業名が未登録です。先に企業情報を登録してください。');
+    const oldKind=v('cjEditKind')||v('cjkind'), id=v('cjEditId');
+    const kind=v('cjkind'), tab=kind==='career'?'career_jobs':'dispatch_jobs';
+    let attachment_url='',poster_url='';
+    if(id&&oldKind===kind){
+      const old=await sb.from(tab).select('*').eq('id',id).maybeSingle();
+      attachment_url=old.data?.attachment_url||'';poster_url=old.data?.poster_url||'';
+    }
+    if(document.getElementById('cjAttachment')?.files?.[0])attachment_url=await upload('cjAttachment','job-attachments','companyjob');
+    if(document.getElementById('cjPoster')?.files?.[0])poster_url=await upload('cjPoster','job-posters','companyposter');
+    const q=Number(v('cjquota')||1);
+    const p={
+      company_id:comp.id,
+      company_email:currentProfile.email,
+      company:comp.company_name,
+      company_logo_url:comp.logo_url||'',
+      logo_url:comp.logo_url||'',
+      company_intro:comp.company_intro||'',
+      company_website:comp.company_website||'',
+      job_type:v('cjtype')||'未入力職種',
+      work_content:v('cjwork'),
+      work_place:v('cjplace'),
+      pay:v('cjpay'),
+      work_time:v('cjtime'),
+      requirements:v('cjrequirements'),
+      foreigner_ok:v('cjForeign'),
+      japanese_level:v('cjJapanese'),
+      quota:q,
+      remaining_quota:q,
+      active:!draft && v('cjActive')==='true',
+      approval_status:'承認済',
+      created_by_role:'company',
+      application_route:'企業へ直接送信',
+      attachment_url,
+      poster_url,
+      external_url:v('cjUrl')
+    };
+    let r;
+    if(id&&oldKind===kind)r=await sb.from(tab).update(p).eq('id',id);
+    else{
+      if(id&&oldKind!==kind)await sb.from(oldKind==='career'?'career_jobs':'dispatch_jobs').delete().eq('id',id);
+      r=await sb.from(tab).insert(p);
+    }
+    if(r.error)throw r.error;
+    alert(draft?'下書きを保存しました。':'求人を保存しました。');
+    companyJobs();
+  }catch(e){alert('求人保存エラー：'+e.message)}
+}
+
+/* 企業自社求人一覧 */
+async function companyJobs(){
+  const comp=await v72GetCompany();
+  const cidSafe=comp.id||'00000000-0000-0000-0000-000000000000';
+  const d=await sb.from('dispatch_jobs').select('*').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`).order('created_at',{ascending:false});
+  const c=await sb.from('career_jobs').select('*').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`).order('created_at',{ascending:false});
+  const rows=[...(d.data||[]).map(j=>({...j,_kind:'dispatch'})),...(c.data||[]).map(j=>({...j,_kind:'career'}))];
+  companyContent.innerHTML=`<button class="gray" onclick="companyDashboard()">← 戻る</button>
+    <h3>自社求人管理</h3>
+    <div class="v72-profile-card">
+      ${v72Logo(comp.logo_url,true)}
+      <div><h3>${esc(comp.company_name||'企業名未登録')}</h3><p>${esc(comp.company_intro||'企業紹介は未登録です。')}</p>${comp.company_website?`<p><a class="link" target="_blank" href="${esc(v72SafeUrl(comp.company_website))}">企業ホームページ</a></p>`:''}</div>
+    </div>
+    <div class="v70-toolbar"><button onclick="companyJobForm()">求人追加</button><button class="secondary" onclick="companyProfileSettings()">企業情報を編集</button></div>`+
+    (rows.map(j=>jobCard(j,j._kind,false,true)).join('')||'<div class="v72-job-card">自社求人はありません。</div>');
+}
+
+/* 求人カード：企業名・ロゴを必ず表示 */
+function jobCard(j,k,apply=false,manage=false){
+  let h=`<div class="v72-job-card">
+    <div class="v72-job-top">${v72Logo(j.company_logo_url||j.logo_url)}
+      <div><h3>${esc(j.company||'企業名未設定')}</h3><div class="v72-job-title">${esc(j.job_type||'職種未設定')}</div></div>
+    </div>
+    ${v72Tags(j)}
+    <div class="v72-meta">📍 ${esc(j.work_place||'勤務地未設定')}　💴 ${esc(j.pay||'給与未設定')}　🕒 ${esc(j.work_time||'')}</div>
+    <p>${esc((j.work_content||'').slice(0,100))}${(j.work_content||'').length>100?'...':''}</p>
+    ${v72Links(j)}
+    <div class="v70-toolbar">
+      <button class="secondary" onclick="openJobDetail(this)" data-job='${JSON.stringify(j).replace(/'/g,"&apos;")}' data-kind="${k}">詳細</button>`;
+  if(apply)h+=`<button onclick="applyJob('${k}','${j.id}')">応募する</button><button class="favorite-btn" onclick="toggleJobFavorite('${k}','${j.id}')">★ お気に入り</button>`;
+  if(manage)h+=`<button onclick="companyJobForm('${k}','${j.id}')">編集</button><button class="red" onclick="deleteJob('${k}','${j.id}')">削除</button>`;
+  return h+'</div></div>';
+}
+
+/* 企業設定ページが旧設定だった場合も企業情報へ誘導 */
+async function companySettings(){
+  return companyProfileSettings();
+}
 
 </script>
 </body>
