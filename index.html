@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SOLA CAREER CENTER V7.0 企業直接応募フロー</title>
+<title>SOLA CAREER CENTER V7.1 企業版完善修正版</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
 /* ===== V5.5.2 チャット返信・求人添付修正：最終上書き ===== */
 function v552RoleLabel(role){
@@ -815,163 +815,149 @@ document.addEventListener('click',function(e){
 document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{refreshNoticeBadge?.()}catch(e){}},1200));
 
 
-/* ===== SOLA CAREER CENTER V7.0 企業直接応募フロー：最終上書き ===== */
-function v70AppTable(kind){return kind==='career'?'career_apps':'dispatch_apps'}
-function v70JobTable(kind){return kind==='career'?'career_jobs':'dispatch_jobs'}
-function v70JobKindLabel(kind){return kind==='career'?'就職支援':'人材派遣'}
-function v70StatusBadge(s){
-  const v=s||'応募済';
-  const cls=/採用|面接確定|承認/.test(v)?'green':/不採用|未参加|削除/.test(v)?'red':/保留|待ち|確認/.test(v)?'orange':'purple';
-  return `<span class="v70-badge ${cls}">${esc(v)}</span>`;
+/* ===== SOLA CAREER CENTER V7.1 企業情報・求人カード改善：最終上書き ===== */
+function v71LogoHtml(url, cls='v71-job-logo'){
+  if(url)return `<img class="${cls}" src="${esc(url)}" onerror="this.outerHTML='<div class=&quot;v71-job-logo-empty&quot;>🏢</div>'">`;
+  return `<div class="${cls==='v71-logo'?'v71-logo-placeholder':'v71-job-logo-empty'}">🏢</div>`;
 }
-function v70AppFlow(status){
-  const steps=['応募済','企業確認中','面接案内送信済','学生確認待ち','面接確定','面接実施済','結果通知済'];
-  const idx=Math.max(0,steps.findIndex(x=>x===status));
-  return `<div class="v70-flow">${steps.map((x,i)=>`<span class="${i<=idx?'on':''}">${x}</span>`).join('')}</div>`;
+function v71SafeUrl(u){
+  const s=String(u||'').trim();
+  if(!s)return '';
+  return (s.startsWith('http://')||s.startsWith('https://'))?s:'https://'+s;
 }
-async function v70GetCompany(){
+function v71JobLinks(j){
+  let h='';
+  if(j.attachment_url)h+=`<a target="_blank" class="link" href="${esc(j.attachment_url)}">📄 求人票</a> `;
+  if(j.poster_url)h+=`<a target="_blank" class="link" href="${esc(j.poster_url)}">🖼️ ポスター</a> `;
+  if(j.external_url)h+=`<a target="_blank" class="link" href="${esc(v71SafeUrl(j.external_url))}">🌐 求人URL</a> `;
+  if(j.company_website)h+=`<a target="_blank" class="link" href="${esc(v71SafeUrl(j.company_website))}">🏢 企業HP</a> `;
+  return h?`<div style="margin-top:8px">${h}</div>`:'';
+}
+function v71JobTags(j){
+  let h='';
+  if(String(j.foreigner_ok||'').includes('可'))h+='<span class="v71-tag green">外国人OK</span>';
+  if(String(j.requirements||j.work_content||'').includes('急募'))h+='<span class="v71-tag red">急募</span>';
+  if(j.japanese_level)h+=`<span class="v71-tag">${esc(j.japanese_level)}</span>`;
+  if(j.created_by_role==='company')h+='<span class="v71-tag orange">企業投稿</span>';
+  return h?`<div class="v71-tags">${h}</div>`:'';
+}
+function jobCard(j,k,apply=false,manage=false){
+  const logo=j.company_logo_url||j.logo_url||'';
+  let h=`<div class="v71-job-card">
+    <div class="v71-job-top">
+      ${v71LogoHtml(logo)}
+      <div>
+        <h3>${esc(j.company||'企業名未設定')}</h3>
+        <div class="v71-job-title">${esc(j.job_type||'職種未設定')}</div>
+      </div>
+    </div>
+    ${v71JobTags(j)}
+    <div class="v71-job-meta">📍 ${esc(j.work_place||'勤務地未設定')}　💴 ${esc(j.pay||'給与未設定')}　🕒 ${esc(j.work_time||'')}</div>
+    <p>${esc((j.work_content||'').slice(0,90))}${(j.work_content||'').length>90?'...':''}</p>
+    ${v71JobLinks(j)}
+    <div class="v70-toolbar">
+      <button class="secondary" onclick="openJobDetail(this)" data-job='${JSON.stringify(j).replace(/'/g,"&apos;")}' data-kind="${k}">詳細</button>`;
+  if(apply)h+=`<button onclick="applyJob('${k}','${j.id}')">応募する</button><button class="favorite-btn" onclick="toggleJobFavorite('${k}','${j.id}')">★ お気に入り</button>`;
+  if(manage){
+    h+=`<button onclick="companyJobForm('${k}','${j.id}')">編集</button><button class="red" onclick="deleteJob('${k}','${j.id}')">削除</button>`;
+  }
+  return h+'</div></div>';
+}
+async function v71GetCompany(){
   try{
     const id=await cid();
     const r=await sb.from('companies').select('*').eq('id',id).maybeSingle();
-    return r.data||{id,email:currentProfile?.email,company_name:currentProfile?.name||''};
+    return r.data||{id,email:currentProfile?.email,company_name:''};
   }catch(e){
     return {id:null,email:currentProfile?.email,company_name:currentProfile?.name||''};
   }
 }
-async function v70GetStudent(){
-  const st=await sid();
-  const r=await sb.from('students').select('*').eq('id',st).maybeSingle();
-  return r.data||{id:st,email:currentProfile?.email,name:currentProfile?.name||''};
-}
-async function createInAppNotice(targetRole,targetEmail,title,body,category,type){
-  const finalRole=targetEmail?'individual':(targetRole||'all');
-  const finalType=type||(targetEmail?'personal':'all');
-  return await sb.from('user_notifications').insert({
-    target_role:finalRole,
-    target_email:targetEmail||null,
-    title,
-    body,
-    category:category||'案内',
-    notice_type:finalType,
-    active:true,
-    read:false
-  });
-}
-async function v70Notify(email,title,body,category='案内'){
-  if(!email)return null;
-  return await createInAppNotice(null,email,title,body,category,'personal');
+async function v71UpdateCompanyProfile(companyId){
+  let logo_url=v('cjOldCompanyLogo');
+  if(document.getElementById('cjCompanyLogo')?.files?.[0])logo_url=await upload('cjCompanyLogo','company-logos','companylogo');
+  const company_name=v('cjCompanyName')||currentProfile?.name||currentProfile?.email;
+  const company_intro=v('cjCompanyIntro');
+  const company_website=v('cjCompanyWebsite');
+  if(companyId){
+    await sb.from('companies').update({company_name,logo_url,company_intro,company_website}).eq('id',companyId);
+  }
+  return {company_name,logo_url,company_intro,company_website};
 }
 
-/* 通知削除：学生・企業・管理者とも削除可能 */
-async function fetchMyNotices(role,email){
-  const [q1,q2,q3]=await Promise.all([
-    sb.from('user_notifications').select('*').eq('target_role','all').is('target_email',null).eq('active',true).order('created_at',{ascending:false}),
-    sb.from('user_notifications').select('*').eq('target_role',role).is('target_email',null).eq('active',true).order('created_at',{ascending:false}),
-    sb.from('user_notifications').select('*').eq('target_role','individual').eq('target_email',email).eq('active',true).order('created_at',{ascending:false})
-  ]);
-  const seen=new Set();
-  return [...(q1.data||[]),...(q2.data||[]),...(q3.data||[])].filter(x=>{
-    if(seen.has(x.id))return false;
-    seen.add(x.id);
-    const del=x.deleted_by||[];
-    if(Array.isArray(del)&&del.includes(email))return false;
-    return true;
-  }).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-}
-function noticeCard(n){
-  const cls=n.read?'notice-card-read':'notice-card-unread';
-  const readBtn=n.read?'<span class="summary" style="font-size:12px">✅ 既読</span>':`<button class="secondary" style="font-size:12px;padding:5px 10px" onclick="markNoticeRead('${n.id}')">既読にする</button>`;
-  return`<div class="mini-card ${cls}" style="margin-bottom:10px">
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">${typeof noticeTypeLabel==='function'?noticeTypeLabel(n):''}<span class="link">${esc(n.category||'案内')}</span>${!n.read?'<span class="notify-badge">未読</span>':''}</div>
-    <h3 style="margin:0 0 6px">${esc(n.title||'')}</h3>
-    <p style="white-space:pre-line;margin:0 0 8px">${esc(n.body||'')}</p>
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-      <small style="color:var(--muted)">${esc((n.created_at||'').slice(0,16).replace('T',' '))}</small>
-      <div>${readBtn}<button class="red" style="font-size:12px;padding:5px 10px" onclick="deleteMyNotice('${n.id}')">削除</button></div>
-    </div>
-  </div>`;
-}
-async function deleteMyNotice(id){
-  if(!confirm('この通知を削除しますか？'))return;
-  try{
-    const r=await sb.from('user_notifications').select('deleted_by').eq('id',id).maybeSingle();
-    const arr=Array.isArray(r.data?.deleted_by)?r.data.deleted_by:[];
-    const email=currentProfile?.email||'';
-    if(!arr.includes(email))arr.push(email);
-    await sb.from('user_notifications').update({deleted_by:arr}).eq('id',id);
-    await refreshNoticeBadge?.();
-    if(currentProfile?.role==='student')studentNotices();
-    if(currentProfile?.role==='company')companyNotices();
-    if(currentProfile?.role==='admin')adminNoticesV70?.();
-  }catch(e){alert('通知削除エラー：'+e.message)}
-}
-async function markAllNoticesRead(){
-  const notices=await fetchMyNotices(currentProfile.role,currentProfile.email);
-  const ids=notices.filter(x=>!x.read).map(x=>x.id);
-  if(ids.length)await sb.from('user_notifications').update({read:true,read_at:new Date().toISOString()}).in('id',ids);
-  await refreshNoticeBadge?.();
-  if(currentProfile.role==='student')studentNotices();
-  if(currentProfile.role==='company')companyNotices();
-}
-
-/* 企業マイページ：自社求人・応募者管理を追加 */
-async function companyDashboard(){
-  showPage('companyPage');
-  companyInfo.textContent=currentProfile.email;
-  const comp=await v70GetCompany();
-  const d=await sb.from('dispatch_jobs').select('id').or(`company_id.eq.${comp.id||'00000000-0000-0000-0000-000000000000'},company_email.eq.${currentProfile.email}`);
-  const c=await sb.from('career_jobs').select('id').or(`company_id.eq.${comp.id||'00000000-0000-0000-0000-000000000000'},company_email.eq.${currentProfile.email}`);
-  const apps=await v70LoadCompanyApplications();
-  const summaryBar=typeof noticeSummaryBar==='function'?await noticeSummaryBar('company',currentProfile.email,'companyNotices'):'';
-  companyContent.innerHTML=summaryBar+`
-    <h3>ダッシュボード</h3>
-    <div class="kpi">
-      <div class="stat"><span>自社求人</span><b>${(d.data||[]).length+(c.data||[]).length}</b></div>
-      <div class="stat"><span>応募者</span><b>${apps.length}</b></div>
-      <div class="stat"><span>面接待ち</span><b>${apps.filter(x=>/面接|学生確認待ち/.test(x.process_status||x.status||'')).length}</b></div>
-    </div>
-    <div class="v70-toolbar">
-      <button onclick="companyJobForm()">求人追加</button>
-      <button class="secondary" onclick="companyJobs()">自社求人管理</button>
-      <button class="secondary" onclick="companyApplicants()">応募者管理</button>
-      <button class="secondary" onclick="companyInterviews()">面接管理</button>
-      <button class="secondary" onclick="companyNotices()">通知</button>
-    </div>
-    <div class="alert info">学生応募は企業へ直接届きます。管理者も進捗を確認できます。</div>`;
-  await refreshNoticeBadge?.();
-}
-function companyJobForm(kind='dispatch',id=''){
+/* 企業求人フォーム：会社名・ロゴ・紹介文を編集可能にする */
+async function companyJobForm(kind='dispatch',id=''){
+  const comp=await v71GetCompany();
   companyContent.innerHTML=`
     <button class="gray" onclick="companyJobs()">← 自社求人へ戻る</button>
     <h3>${id?'自社求人編集':'自社求人追加'}</h3>
-    <div class="alert info">企業が登録した求人は学生応募時に企業へ直接通知されます。管理者も進捗を確認できます。</div>
-    <label>求人区分</label><select id="cjkind"><option value="dispatch">人材派遣・アルバイト</option><option value="career">就職支援</option></select>
-    <div class="v70-grid"><div><label>募集職種</label><input id="cjtype"></div><div><label>募集人数</label><input id="cjquota" type="number" value="1"></div></div>
+    <div class="alert info">企業名・ロゴ・企業紹介は求人カードと応募者画面に表示されます。</div>
+
+    <div class="v71-form-section">企業情報</div>
+    <label>企業名（必須）</label>
+    <input id="cjCompanyName" placeholder="例：株式会社 寺子屋" value="${esc(comp.company_name||comp.name||'')}">
+    <div class="v71-form-grid">
+      <div>
+        <label>企業ロゴ（任意）</label>
+        <input id="cjCompanyLogo" type="file" accept="image/*">
+        <div class="summary">現在：${comp.logo_url?`<a class="link" target="_blank" href="${esc(comp.logo_url)}">ロゴを見る</a>`:'未登録'}</div>
+      </div>
+      <div>
+        <label>企業ホームページ（任意）</label>
+        <input id="cjCompanyWebsite" placeholder="https://..." value="${esc(comp.company_website||'')}">
+      </div>
+    </div>
+    <label>企業紹介（任意）</label>
+    <textarea id="cjCompanyIntro" placeholder="企業の特徴、事業内容、留学生へのメッセージなど">${esc(comp.company_intro||'')}</textarea>
+
+    <div class="v71-form-section">求人情報</div>
+    <label>求人区分</label>
+    <select id="cjkind"><option value="dispatch">人材派遣・アルバイト</option><option value="career">就職支援</option></select>
+    <div class="v71-form-grid">
+      <div><label>募集職種</label><input id="cjtype"></div>
+      <div><label>募集人数</label><input id="cjquota" type="number" value="1"></div>
+    </div>
     <label>仕事内容</label><textarea id="cjwork"></textarea>
-    <div class="v70-grid"><div><label>勤務地</label><input id="cjplace"></div><div><label>給与</label><input id="cjpay"></div></div>
-    <div class="v70-grid"><div><label>勤務時間</label><input id="cjtime"></div><div><label>外国人応募</label><select id="cjForeign"><option>可</option><option>相談</option><option>不可</option></select></div></div>
-    <div class="v70-grid"><div><label>日本語レベル</label><input id="cjJapanese" placeholder="N3以上、N4相談可など"></div><div><label>公開状態</label><select id="cjActive"><option value="true">公開</option><option value="false">非公開</option></select></div></div>
+    <div class="v71-form-grid">
+      <div><label>勤務地</label><input id="cjplace"></div>
+      <div><label>給与</label><input id="cjpay"></div>
+    </div>
+    <div class="v71-form-grid">
+      <div><label>勤務時間</label><input id="cjtime"></div>
+      <div><label>外国人応募</label><select id="cjForeign"><option>可</option><option>相談</option><option>不可</option></select></div>
+    </div>
+    <div class="v71-form-grid">
+      <div><label>日本語レベル</label><input id="cjJapanese" placeholder="N3以上、N4相談可など"></div>
+      <div><label>公開状態</label><select id="cjActive"><option value="true">公開</option><option value="false">非公開</option></select></div>
+    </div>
     <label>応募条件</label><textarea id="cjrequirements"></textarea>
-    <h4 class="section-title">添付・URL（任意）</h4>
+    <div class="v71-form-section">添付・URL（任意）</div>
     <label>求人票ファイル</label><input id="cjAttachment" type="file">
     <label>ポスター・チラシ</label><input id="cjPoster" type="file" accept="image/*,.pdf">
-    <label>求人URL・企業ページURL</label><input id="cjUrl" placeholder="https://...">
+    <label>求人URL</label><input id="cjUrl" placeholder="https://...">
+
+    <input type="hidden" id="cjOldCompanyLogo" value="${esc(comp.logo_url||'')}">
     <input type="hidden" id="cjEditKind" value="${kind}">
     <input type="hidden" id="cjEditId" value="${id}">
-    <button onclick="companySaveJobV70(false)">保存して公開</button>
-    <button class="yellow" onclick="companySaveJobV70(true)">下書き保存</button>`;
-  if(id)companyLoadJobForEdit(kind,id);
+    <button onclick="companySaveJobV71(false)">保存して公開</button>
+    <button class="yellow" onclick="companySaveJobV71(true)">下書き保存</button>`;
+  cjkind.value=kind||'dispatch';
+  if(id)await companyLoadJobForEditV71(kind,id);
 }
-async function companyLoadJobForEdit(kind,id){
-  const r=await sb.from(v70JobTable(kind)).select('*').eq('id',id).maybeSingle();
+async function companyLoadJobForEditV71(kind,id){
+  const r=await sb.from(kind==='career'?'career_jobs':'dispatch_jobs').select('*').eq('id',id).maybeSingle();
   const j=r.data;if(!j)return;
   cjkind.value=kind;cjtype.value=j.job_type||'';cjquota.value=j.quota||1;cjwork.value=j.work_content||'';cjplace.value=j.work_place||'';cjpay.value=j.pay||'';cjtime.value=j.work_time||'';cjForeign.value=j.foreigner_ok||'可';cjJapanese.value=j.japanese_level||'';cjActive.value=String(j.active!==false);cjrequirements.value=j.requirements||'';cjUrl.value=j.external_url||'';
+  if(j.company) cjCompanyName.value=j.company;
+  if(j.company_logo_url||j.logo_url) cjOldCompanyLogo.value=j.company_logo_url||j.logo_url;
+  if(j.company_intro) cjCompanyIntro.value=j.company_intro;
+  if(j.company_website) cjCompanyWebsite.value=j.company_website;
 }
-async function companySaveJobV70(draft){
+async function companySaveJobV71(draft){
   try{
-    const comp=await v70GetCompany();
+    const comp=await v71GetCompany();
+    const profile=await v71UpdateCompanyProfile(comp.id);
     const oldKind=v('cjEditKind')||v('cjkind'), id=v('cjEditId');
-    const kind=v('cjkind'), tab=v70JobTable(kind);
+    const kind=v('cjkind'), tab=kind==='career'?'career_jobs':'dispatch_jobs';
     let attachment_url='',poster_url='';
     if(id&&oldKind===kind){
       const old=await sb.from(tab).select('*').eq('id',id).maybeSingle();
@@ -983,7 +969,11 @@ async function companySaveJobV70(draft){
     const p={
       company_id:comp.id,
       company_email:currentProfile.email,
-      company:comp.company_name||comp.name||currentProfile.name||currentProfile.email,
+      company:profile.company_name,
+      company_logo_url:profile.logo_url,
+      logo_url:profile.logo_url,
+      company_intro:profile.company_intro,
+      company_website:profile.company_website,
       job_type:v('cjtype')||'未入力職種',
       work_content:v('cjwork'),
       work_place:v('cjplace'),
@@ -1005,7 +995,7 @@ async function companySaveJobV70(draft){
     let r;
     if(id&&oldKind===kind)r=await sb.from(tab).update(p).eq('id',id);
     else{
-      if(id&&oldKind!==kind)await sb.from(v70JobTable(oldKind)).delete().eq('id',id);
+      if(id&&oldKind!==kind)await sb.from(oldKind==='career'?'career_jobs':'dispatch_jobs').delete().eq('id',id);
       r=await sb.from(tab).insert(p);
     }
     if(r.error)throw r.error;
@@ -1014,248 +1004,85 @@ async function companySaveJobV70(draft){
   }catch(e){alert('求人保存エラー：'+e.message)}
 }
 async function companyJobs(){
-  const comp=await v70GetCompany();
+  const comp=await v71GetCompany();
   const cidSafe=comp.id||'00000000-0000-0000-0000-000000000000';
   const d=await sb.from('dispatch_jobs').select('*').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`).order('created_at',{ascending:false});
   const c=await sb.from('career_jobs').select('*').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`).order('created_at',{ascending:false});
   const rows=[...(d.data||[]).map(j=>({...j,_kind:'dispatch'})),...(c.data||[]).map(j=>({...j,_kind:'career'}))];
-  companyContent.innerHTML=`<button class="gray" onclick="companyDashboard()">← 戻る</button><h3>自社求人管理</h3><div class="v70-toolbar"><button onclick="companyJobForm()">求人追加</button></div>`+
-    (rows.map(j=>`<div class="v70-card"><h3>${esc(j.company)} / ${esc(j.job_type)}</h3><p>${esc(j.work_place||'')} / ${esc(j.pay||'')} / ${esc(j.work_time||'')}</p><div>${v70StatusBadge(j.active?'公開':'非公開')} ${v70StatusBadge(j.application_route||'企業へ直接送信')}</div><div class="v70-toolbar"><button onclick="companyJobForm('${j._kind}','${j.id}')">編集</button><button class="red" onclick="deleteJob('${j._kind}','${j.id}')">削除</button></div></div>`).join('')||'<div class="v70-card">自社求人はありません。</div>');
+  companyContent.innerHTML=`<button class="gray" onclick="companyDashboard()">← 戻る</button>
+    <h3>自社求人管理</h3>
+    <div class="v71-company-head">${v71LogoHtml(comp.logo_url,'v71-logo')}<div><h3>${esc(comp.company_name||'企業名未設定')}</h3><p>${esc(comp.company_intro||'企業紹介は未登録です。')}</p>${comp.company_website?`<p><a class="link" target="_blank" href="${esc(v71SafeUrl(comp.company_website))}">企業ホームページ</a></p>`:''}</div></div>
+    <div class="v70-toolbar"><button onclick="companyJobForm()">求人追加</button></div>`+
+    (rows.map(j=>jobCard(j,j._kind,false,true)).join('')||'<div class="v71-job-card">自社求人はありません。</div>');
 }
 
-/* 学生応募：企業へ直接送信 */
-async function applyJob(kind,id){
-  try{
-    const st=await v70GetStudent();
-    const tab=v70AppTable(kind);
-    const jt=v70JobTable(kind);
-    const ex=await sb.from(tab).select('id').eq('student_id',st.id).eq('job_id',id).maybeSingle();
-    if(ex.data)return alert('応募済みです');
-    const jr=await sb.from(jt).select('*').eq('id',id).maybeSingle();
-    const j=jr.data||{};
-    const app={
-      student_id:st.id,
-      student_email:st.email||currentProfile.email,
-      student_name:st.name||currentProfile.name||currentProfile.email,
-      job_id:id,
-      job_kind:kind,
-      company_id:j.company_id||null,
-      company_email:j.company_email||null,
-      company_name:j.company||'',
-      status:'応募済',
-      process_status:j.company_email?'企業確認中':'管理者確認中',
-      application_route:'企業へ直接送信',
-      admin_visible:true,
-      forwarded_to_company:!!j.company_email,
-      resume_url:st.resume_attachment_url||st.resume_url||'',
-      last_action_by:'student'
-    };
-    const r=await sb.from(tab).insert(app).select('id').single();
-    if(r.error)throw r.error;
-    await v70Notify(j.company_email,'新しい応募が届きました',`${app.student_name} さんが「${j.job_type||''}」に応募しました。応募者管理から確認してください。`,'応募');
-    await createInAppNotice('admin',null,'新しい学生応募',`${app.student_name} さんが ${j.company||''} / ${j.job_type||''} に応募しました。進捗管理で確認できます。`,'応募','personal');
-    alert('応募しました。企業へ応募情報を送信しました。');
-    closeModal?.();
-  }catch(e){alert('応募エラー：'+e.message)}
+/* 求人詳細：企業ロゴ・企業紹介を表示 */
+function openJobDetail(el){
+  const j=JSON.parse(el.dataset.job);
+  const kind=el.dataset.kind;
+  const applyBtn=currentProfile?.role==='student'?`<div style="margin-top:16px"><button onclick="applyJob('${kind}','${esc(j.id)}');closeModal()">この求人に応募する ✋</button></div>`:'';
+  modalContent.innerHTML=`
+    <div class="v71-detail-company">
+      ${v71LogoHtml(j.company_logo_url||j.logo_url,'v71-logo')}
+      <div>
+        <span class="link">${kind==='career'?'就職支援':'人材派遣'}</span>
+        <h2 style="margin:6px 0 2px">${esc(j.company||'企業名未設定')}</h2>
+        <p style="margin:0;color:var(--muted)">${esc(j.company_intro||'')}</p>
+      </div>
+    </div>
+    <h3>${esc(j.job_type||'職種未設定')}</h3>
+    ${v71JobTags(j)}
+    <table style="width:100%;font-size:14px;border-collapse:collapse">
+      <tr><th style="width:110px;background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">勤務地</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.work_place||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">給与</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.pay||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">勤務時間</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.work_time||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">仕事内容</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.work_content||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">応募条件</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.requirements||'—')}</td></tr>
+      ${j.foreigner_ok?`<tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">外国人応募</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.foreigner_ok)}</td></tr>`:''}
+      ${j.japanese_level?`<tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">日本語レベル</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.japanese_level)}</td></tr>`:''}
+    </table>
+    ${v71JobLinks(j)}
+    ${applyBtn}`;
+  modal.classList.add('on');
 }
 
-/* 企業応募者管理 */
-async function v70LoadCompanyApplications(){
-  const comp=await v70GetCompany();
-  const cidSafe=comp.id||'00000000-0000-0000-0000-000000000000';
-  const [dj,cj,da,ca,students]=await Promise.all([
-    sb.from('dispatch_jobs').select('*').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`),
-    sb.from('career_jobs').select('*').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`),
-    sb.from('dispatch_apps').select('*').order('created_at',{ascending:false}),
-    sb.from('career_apps').select('*').order('created_at',{ascending:false}),
-    sb.from('students').select('*')
-  ]);
-  const jobMap={};
-  (dj.data||[]).forEach(j=>jobMap['dispatch:'+j.id]={...j,_kind:'dispatch'});
-  (cj.data||[]).forEach(j=>jobMap['career:'+j.id]={...j,_kind:'career'});
-  const stuMap={};(students.data||[]).forEach(s=>stuMap[s.id]=s);
-  const rows=[];
-  (da.data||[]).forEach(a=>{const j=jobMap['dispatch:'+a.job_id]; if(j||a.company_email===currentProfile.email)rows.push({...a,_kind:'dispatch',job:j,student:stuMap[a.student_id]});});
-  (ca.data||[]).forEach(a=>{const j=jobMap['career:'+a.job_id]; if(j||a.company_email===currentProfile.email)rows.push({...a,_kind:'career',job:j,student:stuMap[a.student_id]});});
-  return rows.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
-}
-async function companyApplicants(){
-  const rows=await v70LoadCompanyApplications();
-  let h=`<button class="gray" onclick="companyDashboard()">← 戻る</button><h3>応募者管理</h3><div class="alert info">学生応募は企業へ直接届きます。管理者も同じ進捗を確認できます。</div><div class="v70-table-wrap"><table class="v70-table"><tr><th>学生</th><th>求人</th><th>状態</th><th>履歴書</th><th>操作</th></tr>`;
-  rows.forEach(a=>{
-    const s=a.student||{};
-    const j=a.job||{};
-    const resume=a.resume_url||s.resume_attachment_url||s.resume_url||'';
-    h+=`<tr><td><b>${esc(a.student_name||s.name||'')}</b><br><span class="v70-mini">${esc(a.student_email||s.email||'')}</span></td><td>${v70JobKindLabel(a._kind)}<br><b>${esc(j.job_type||'')}</b><br><span class="v70-mini">${esc(j.company||a.company_name||'')}</span></td><td>${v70StatusBadge(a.process_status||a.status)}${v70AppFlow(a.process_status||a.status)}</td><td>${resume?`<a class="link" target="_blank" href="${esc(resume)}">履歴書を見る</a>`:'未登録'}</td><td><button onclick="companyApplicantDetail('${a._kind}','${a.id}')">詳細</button><button class="secondary" onclick="v70CompanyMessageForm('${a._kind}','${a.id}')">連絡</button></td></tr>`;
-  });
-  h+='</table></div>';
-  companyContent.innerHTML=h;
-}
-async function companyApplicantDetail(kind,id){
-  const app=await sb.from(v70AppTable(kind)).select('*').eq('id',id).maybeSingle();
-  const a=app.data;if(!a)return alert('応募情報が見つかりません');
-  const s=(await sb.from('students').select('*').eq('id',a.student_id).maybeSingle()).data||{};
-  const j=(await sb.from(v70JobTable(kind)).select('*').eq('id',a.job_id).maybeSingle()).data||{};
-  const resume=a.resume_url||s.resume_attachment_url||s.resume_url||'';
-  companyContent.innerHTML=`<button class="gray" onclick="companyApplicants()">← 応募者一覧へ戻る</button><h3>応募者詳細</h3>
-    <div class="v70-card"><h3>${esc(a.student_name||s.name||'')}</h3><p>${esc(a.student_email||s.email||'')} / ${esc(s.phone||'')}</p><p>学校：${esc(s.school||'SOLA学園')} / 学科：${esc(s.department||'')}</p><p>日本語：${esc(s.japanese_level||s.jlpt||'')}</p>${resume?`<p><a class="link" target="_blank" href="${esc(resume)}">履歴書PDFを開く</a></p>`:''}</div>
-    <div class="v70-card"><h3>応募求人</h3><p>${esc(j.company||a.company_name||'')} / ${esc(j.job_type||'')}</p>${v70StatusBadge(a.process_status||a.status)}${v70AppFlow(a.process_status||a.status)}</div>
-    <div class="v70-toolbar">
-      <button onclick="v70InterviewForm('${kind}','${id}')">面接案内を送信</button>
-      <button class="secondary" onclick="v70CompanyMessageForm('${kind}','${id}')">学生へ連絡</button>
-      <button class="green" onclick="v70SetApplicationResult('${kind}','${id}','採用')">採用</button>
-      <button class="red" onclick="v70SetApplicationResult('${kind}','${id}','不採用')">不採用</button>
-      <button class="yellow" onclick="v70SetApplicationResult('${kind}','${id}','保留')">保留</button>
-      <button class="secondary" onclick="v70SetApplicationResult('${kind}','${id}','未参加')">未参加</button>
-    </div>`;
-}
-async function v70InterviewForm(kind,id){
-  companyContent.innerHTML=`<button class="gray" onclick="companyApplicantDetail('${kind}','${id}')">← 戻る</button><h3>面接案内</h3>
-    <label>面接日時</label><input id="v70InterviewTime" type="datetime-local">
-    <label>面接方法</label><select id="v70InterviewMethod"><option>対面</option><option>オンライン</option></select>
-    <label>面接場所</label><input id="v70InterviewPlace" placeholder="学校、企業所在地など">
-    <label>Zoom URL / Google Meet URL</label><input id="v70InterviewUrl" placeholder="https://...">
-    <label>学生へのメッセージ</label><textarea id="v70InterviewMsg">面接のご案内です。内容をご確認のうえ、参加可否を選択してください。</textarea>
-    <button onclick="v70SendInterview('${kind}','${id}')">面接案内を送信</button>`;
-}
-async function v70SendInterview(kind,id){
-  try{
-    const app=(await sb.from(v70AppTable(kind)).select('*').eq('id',id).maybeSingle()).data;
-    if(!app)throw new Error('応募情報が見つかりません');
-    const comp=await v70GetCompany();
-    const p={
-      application_id:id,
-      application_kind:kind,
-      student_id:app.student_id,
-      company_id:comp.id,
-      company_email:currentProfile.email,
-      interview_time:v('v70InterviewTime'),
-      method:v('v70InterviewMethod'),
-      location:v('v70InterviewPlace'),
-      meet_url:v('v70InterviewUrl'),
-      message:v('v70InterviewMsg'),
-      status:'学生確認待ち',
-      title:'面接案内'
-    };
-    const r=await sb.from('interviews').insert(p);
-    if(r.error)throw r.error;
-    await sb.from(v70AppTable(kind)).update({status:'面接案内送信済',process_status:'学生確認待ち',interview_status:'学生確認待ち',last_action_by:'company'}).eq('id',id);
-    await v70Notify(app.student_email,'面接案内が届きました',`${comp.company_name||currentProfile.email} から面接案内が届きました。マイページで確認してください。`,'面接');
-    await createInAppNotice('admin',null,'面接案内送信',`${comp.company_name||currentProfile.email} が学生へ面接案内を送信しました。`,'面接','personal');
-    alert('面接案内を送信しました。');
-    companyApplicantDetail(kind,id);
-  }catch(e){alert('面接案内エラー：'+e.message)}
-}
-async function v70SetApplicationResult(kind,id,result){
-  if(!confirm(`面接結果を「${result}」として通知しますか？`))return;
-  const app=(await sb.from(v70AppTable(kind)).select('*').eq('id',id).maybeSingle()).data;
-  const status=result==='採用'?'採用':result==='不採用'?'不採用':result==='未参加'?'未参加':'保留';
-  await sb.from(v70AppTable(kind)).update({status,process_status:'結果通知済',result_status:result,last_action_by:'company'}).eq('id',id);
-  await v70Notify(app.student_email,`面接結果：${result}`,`応募中の求人について、企業より面接結果「${result}」が登録されました。`,'面接結果');
-  await createInAppNotice('admin',null,`面接結果：${result}`,`企業が面接結果「${result}」を登録しました。`,'面接結果','personal');
-  alert('結果を登録し、学生へ通知しました。');
-  companyApplicantDetail(kind,id);
-}
-async function v70CompanyMessageForm(kind,id){
-  companyContent.innerHTML=`<button class="gray" onclick="companyApplicantDetail('${kind}','${id}')">← 戻る</button><h3>学生へ連絡</h3><label>件名</label><input id="v70MsgTitle" value="企業からの連絡"><label>本文</label><textarea id="v70MsgBody"></textarea><button onclick="v70SendCompanyMessage('${kind}','${id}')">送信</button>`;
-}
-async function v70SendCompanyMessage(kind,id){
-  const app=(await sb.from(v70AppTable(kind)).select('*').eq('id',id).maybeSingle()).data;
-  if(!app)return alert('応募情報が見つかりません');
-  await v70Notify(app.student_email,v('v70MsgTitle'),v('v70MsgBody'),'企業連絡');
-  await sb.from('chat_messages').insert({user_email:app.student_email,user_role:'student',user_name:app.student_name||'',sender_role:'company',sender:'company',company_email:currentProfile.email,message:v('v70MsgBody'),read_by_admin:false,read_by_user:false});
-  alert('学生へ連絡しました。');
-  companyApplicantDetail(kind,id);
-}
-
-/* 学生：面接通知の確認 */
-async function studentInterviews(){
-  const st=await v70GetStudent();
-  const r=await sb.from('interviews').select('*').eq('student_id',st.id).order('interview_time',{ascending:true});
-  studentContent.innerHTML=`<button class="gray" onclick="studentDashboard()">← 戻る</button><h3>面接予定</h3>`+
-    ((r.data||[]).map(x=>`<div class="v70-card"><h3>${esc(x.title||'面接')}</h3><p>日時：${esc((x.interview_time||'').replace('T',' '))}</p><p>方法：${esc(x.method||'')}</p><p>場所：${esc(x.location||'')}</p>${x.meet_url?`<p><a class="link" target="_blank" href="${esc(x.meet_url)}">オンラインURLを開く</a></p>`:''}<p>${esc(x.message||'')}</p>${v70StatusBadge(x.status)}<div class="v70-toolbar"><button onclick="v70StudentConfirmInterview('${x.id}','参加する')">参加する</button><button class="yellow" onclick="v70StudentConfirmInterview('${x.id}','日程変更希望')">日程変更希望</button><button class="red" onclick="v70StudentConfirmInterview('${x.id}','不参加')">不参加</button></div></div>`).join('')||'<div class="v70-card">面接予定はありません。</div>');
-}
-async function v70StudentConfirmInterview(id,answer){
-  const it=(await sb.from('interviews').select('*').eq('id',id).maybeSingle()).data;
-  if(!it)return;
-  const status=answer==='参加する'?'面接確定':answer;
-  await sb.from('interviews').update({student_response:answer,status}).eq('id',id);
-  if(it.application_id&&it.application_kind)await sb.from(v70AppTable(it.application_kind)).update({process_status:status,interview_status:status,last_action_by:'student'}).eq('id',it.application_id);
-  await v70Notify(it.company_email,'学生が面接案内を確認しました',`学生の回答：${answer}`,'面接');
-  await createInAppNotice('admin',null,'学生が面接案内を確認',`学生の回答：${answer}`,'面接','personal');
-  alert('回答を送信しました。');
-  studentInterviews();
-}
-
-/* 管理者：応募進捗管理・企業送信状況確認 */
-async function adminApplications(){
-  const rows=await v70LoadAllApplications();
-  let h=`<button class="gray" onclick="adminDashboard()">← 戻る</button><h3>応募管理・採用進捗</h3><div class="alert info">応募方式：企業へ直接送信。管理者は全件の進捗を確認できます。</div><div class="v70-table-wrap"><table class="v70-table"><tr><th>学生</th><th>企業・求人</th><th>応募方式</th><th>進捗</th><th>操作</th></tr>`;
-  rows.forEach(a=>{
-    h+=`<tr><td><b>${esc(a.student_name||a.student?.name||'')}</b><br><span class="v70-mini">${esc(a.student_email||a.student?.email||'')}</span></td><td>${esc(a.company_name||a.job?.company||'')}<br><b>${esc(a.job?.job_type||'')}</b></td><td>${esc(a.application_route||'企業へ直接送信')}</td><td>${v70StatusBadge(a.process_status||a.status)}${v70AppFlow(a.process_status||a.status)}</td><td><button onclick="adminApplicationDetailV70('${a._kind}','${a.id}')">詳細</button><button class="secondary" onclick="adminForwardToCompanyV70('${a._kind}','${a.id}')">企業へ再通知</button></td></tr>`;
-  });
-  h+='</table></div>';
-  adminContent.innerHTML=h;
-}
-async function v70LoadAllApplications(){
-  const [da,ca,st,dj,cj]=await Promise.all([
-    sb.from('dispatch_apps').select('*').order('created_at',{ascending:false}),
-    sb.from('career_apps').select('*').order('created_at',{ascending:false}),
-    sb.from('students').select('*'),
-    sb.from('dispatch_jobs').select('*'),
-    sb.from('career_jobs').select('*')
-  ]);
-  const sm={};(st.data||[]).forEach(x=>sm[x.id]=x);
-  const jm={};(dj.data||[]).forEach(x=>jm['dispatch:'+x.id]=x);(cj.data||[]).forEach(x=>jm['career:'+x.id]=x);
-  return [...(da.data||[]).map(a=>({...a,_kind:'dispatch',student:sm[a.student_id],job:jm['dispatch:'+a.job_id]})),...(ca.data||[]).map(a=>({...a,_kind:'career',student:sm[a.student_id],job:jm['career:'+a.job_id]}))];
-}
-async function adminApplicationDetailV70(kind,id){
-  const a=(await sb.from(v70AppTable(kind)).select('*').eq('id',id).maybeSingle()).data;
-  const s=(await sb.from('students').select('*').eq('id',a.student_id).maybeSingle()).data||{};
-  const j=(await sb.from(v70JobTable(kind)).select('*').eq('id',a.job_id).maybeSingle()).data||{};
-  const resume=a.resume_url||s.resume_attachment_url||'';
-  adminContent.innerHTML=`<button class="gray" onclick="adminApplications()">← 応募管理へ戻る</button><h3>応募詳細</h3><div class="v70-card"><h3>${esc(a.student_name||s.name||'')}</h3><p>${esc(a.student_email||s.email||'')}</p>${resume?`<p><a class="link" target="_blank" href="${esc(resume)}">履歴書を見る</a></p>`:''}</div><div class="v70-card"><h3>${esc(j.company||a.company_name||'')}</h3><p>${esc(j.job_type||'')}</p>${v70StatusBadge(a.process_status||a.status)}${v70AppFlow(a.process_status||a.status)}</div><div class="v70-toolbar"><button onclick="adminForwardToCompanyV70('${kind}','${id}')">企業へ再通知</button><button class="secondary" onclick="adminApplications()">一覧へ戻る</button></div>`;
-}
-async function adminForwardToCompanyV70(kind,id){
-  const a=(await sb.from(v70AppTable(kind)).select('*').eq('id',id).maybeSingle()).data;
-  const j=(await sb.from(v70JobTable(kind)).select('*').eq('id',a.job_id).maybeSingle()).data||{};
-  const email=a.company_email||j.company_email;
-  if(!email)return alert('企業メールアドレスが登録されていません。');
-  await sb.from(v70AppTable(kind)).update({forwarded_to_company:true,process_status:'企業確認中',application_route:'企業へ直接送信',last_action_by:'admin'}).eq('id',id);
-  await v70Notify(email,'応募情報の確認依頼',`${a.student_name||'学生'} さんの応募情報をご確認ください。`,'応募');
-  alert('企業へ通知しました。');
-  adminApplications();
-}
-
-/* 企業・学生・管理者通知ページ：削除対応 */
-async function studentNotices(){
-  const notices=await fetchMyNotices('student',currentProfile.email);
-  const unread=notices.filter(x=>!x.read);
-  studentContent.innerHTML=`<button class="gray" onclick="studentDashboard()">← 戻る</button><h3>通知</h3>${typeof pushButtonHtml==='function'?await pushButtonHtml():''}<div class="v70-toolbar">${unread.length?`<button class="secondary" onclick="markAllNoticesRead()">すべて既読</button>`:''}</div><div>${notices.map(noticeCard).join('')||'通知はありません'}</div>`;
-  await refreshNoticeBadge?.();
-}
-async function companyNotices(){
-  const notices=await fetchMyNotices('company',currentProfile.email);
-  const unread=notices.filter(x=>!x.read);
-  companyContent.innerHTML=`<button class="gray" onclick="companyDashboard()">← 戻る</button><h3>通知</h3><div class="v70-toolbar">${unread.length?`<button class="secondary" onclick="markAllNoticesRead()">すべて既読</button>`:''}</div><div>${notices.map(noticeCard).join('')||'通知はありません'}</div>`;
-  await refreshNoticeBadge?.();
-}
-async function adminNoticesV70(){
-  const r=await sb.from('user_notifications').select('*').eq('active',true).order('created_at',{ascending:false}).limit(200);
-  adminContent.innerHTML=`<button class="gray" onclick="adminDashboard()">← 戻る</button><h3>通知管理</h3>`+((r.data||[]).map(noticeCard).join('')||'通知はありません');
-}
-
-/* メニュー補助 */
+/* 応募時も企業名・ロゴを保持 */
 try{
-  const oldAdminDashboardV70=adminDashboard;
-  adminDashboard=async function(){
-    await oldAdminDashboardV70();
+  const oldApplyJobV71=applyJob;
+  applyJob=async function(kind,id){
     try{
-      const tabs=document.querySelector('#adminPage .tabs');
-      if(tabs&&!document.getElementById('adminNoticeManageV70')){
-        const b=document.createElement('button');b.id='adminNoticeManageV70';b.textContent='通知管理';b.onclick=adminNoticesV70;tabs.appendChild(b);
-      }
-    }catch(e){}
+      const st=await v70GetStudent?.() || {id:await sid(),email:currentProfile.email,name:currentProfile.name};
+      const tab=kind==='career'?'career_apps':'dispatch_apps';
+      const jt=kind==='career'?'career_jobs':'dispatch_jobs';
+      const ex=await sb.from(tab).select('id').eq('student_id',st.id).eq('job_id',id).maybeSingle();
+      if(ex.data)return alert('応募済みです');
+      const jr=await sb.from(jt).select('*').eq('id',id).maybeSingle();
+      const j=jr.data||{};
+      const app={
+        student_id:st.id,
+        student_email:st.email||currentProfile.email,
+        student_name:st.name||currentProfile.name||currentProfile.email,
+        job_id:id,
+        job_kind:kind,
+        company_id:j.company_id||null,
+        company_email:j.company_email||null,
+        company_name:j.company||'',
+        company_logo_url:j.company_logo_url||j.logo_url||'',
+        status:'応募済',
+        process_status:j.company_email?'企業確認中':'管理者確認中',
+        application_route:'企業へ直接送信',
+        admin_visible:true,
+        forwarded_to_company:!!j.company_email,
+        resume_url:st.resume_attachment_url||st.resume_url||'',
+        last_action_by:'student'
+      };
+      const r=await sb.from(tab).insert(app).select('id').single();
+      if(r.error)throw r.error;
+      if(typeof v70Notify==='function')await v70Notify(j.company_email,'新しい応募が届きました',`${app.student_name} さんが「${j.job_type||''}」に応募しました。応募者管理から確認してください。`,'応募');
+      if(typeof createInAppNotice==='function')await createInAppNotice('admin',null,'新しい学生応募',`${app.student_name} さんが ${j.company||''} / ${j.job_type||''} に応募しました。進捗管理で確認できます。`,'応募','personal');
+      alert('応募しました。企業へ応募情報を送信しました。');
+      closeModal?.();
+    }catch(e){alert('応募エラー：'+e.message)}
   }
 }catch(e){}
 
@@ -1661,19 +1488,25 @@ button,
   .home-hero-title{font-size:16px}
 }
 
-/* ===== SOLA CAREER CENTER V7.0 企業直接応募フロー ===== */
-.v70-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
-.v70-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-.v70-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0;box-shadow:0 4px 14px rgba(15,23,42,.05)}
-.v70-card h3{margin:0 0 8px}
-.v70-badge{display:inline-block;padding:4px 9px;border-radius:999px;background:#e0f2fe;color:#0369a1;font-size:12px;font-weight:900;margin:0 4px 4px 0}
-.v70-badge.green{background:#dcfce7;color:#15803d}.v70-badge.red{background:#fee2e2;color:#dc2626}.v70-badge.orange{background:#ffedd5;color:#c2410c}.v70-badge.purple{background:#ede9fe;color:#6d28d9}
-.v70-flow{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.v70-flow span{padding:5px 9px;border-radius:999px;background:#f1f5f9;font-size:12px;font-weight:800;color:#334155}
-.v70-flow span.on{background:#dcfce7;color:#15803d}
-.v70-table-wrap{overflow-x:auto}.v70-table{width:100%;border-collapse:collapse;background:#fff}.v70-table th,.v70-table td{border-bottom:1px solid var(--line);padding:9px 8px;text-align:left;font-size:13px;vertical-align:top}.v70-table th{background:#f8fafc;font-weight:900}
-.v70-mini{font-size:12px;color:var(--muted);line-height:1.45}
-.v70-danger-link{color:#dc2626;cursor:pointer;font-weight:900}
-@media(max-width:860px){.v70-grid{grid-template-columns:1fr}}
+/* ===== SOLA CAREER CENTER V7.1 企業情報・求人カード改善 ===== */
+.v71-company-head{display:flex;align-items:center;gap:14px;margin:10px 0 16px;padding:14px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 4px 14px rgba(15,23,42,.05)}
+.v71-logo{width:62px;height:62px;border-radius:14px;border:1px solid var(--line);object-fit:contain;background:#fff}
+.v71-logo-placeholder{width:62px;height:62px;border-radius:14px;background:#e0f2fe;display:flex;align-items:center;justify-content:center;font-size:28px;border:1px solid #bae6fd}
+.v71-company-head h3{margin:0 0 4px}.v71-company-head p{margin:0;color:var(--muted);font-size:13px}
+.v71-job-card{border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:0 5px 18px rgba(15,23,42,.06);padding:14px;margin:12px 0}
+.v71-job-top{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.v71-job-logo{width:54px;height:54px;border-radius:12px;object-fit:contain;border:1px solid var(--line);background:#fff}
+.v71-job-logo-empty{width:54px;height:54px;border-radius:12px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:24px;border:1px solid #dbeafe}
+.v71-job-card h3{margin:0;font-size:18px}
+.v71-job-title{font-weight:900;color:#0f172a;font-size:15px;margin-top:2px}
+.v71-job-meta{color:var(--muted);font-size:13px;margin:8px 0}
+.v71-tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.v71-tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:900;background:#e0f2fe;color:#0369a1}
+.v71-tag.green{background:#dcfce7;color:#15803d}.v71-tag.red{background:#fee2e2;color:#dc2626}.v71-tag.orange{background:#ffedd5;color:#c2410c}
+.v71-form-section{border-left:5px solid var(--green);padding-left:12px;margin:18px 0 8px;font-weight:900;font-size:17px}
+.v71-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.v71-detail-company{display:flex;align-items:center;gap:12px;margin:10px 0 16px}
+@media(max-width:860px){.v71-form-grid{grid-template-columns:1fr}.v71-job-top{align-items:flex-start}}
 
 </style>
 </head>
@@ -3983,163 +3816,149 @@ document.addEventListener('click',function(e){
 document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{refreshNoticeBadge?.()}catch(e){}},1200));
 
 
-/* ===== SOLA CAREER CENTER V7.0 企業直接応募フロー：最終上書き ===== */
-function v70AppTable(kind){return kind==='career'?'career_apps':'dispatch_apps'}
-function v70JobTable(kind){return kind==='career'?'career_jobs':'dispatch_jobs'}
-function v70JobKindLabel(kind){return kind==='career'?'就職支援':'人材派遣'}
-function v70StatusBadge(s){
-  const v=s||'応募済';
-  const cls=/採用|面接確定|承認/.test(v)?'green':/不採用|未参加|削除/.test(v)?'red':/保留|待ち|確認/.test(v)?'orange':'purple';
-  return `<span class="v70-badge ${cls}">${esc(v)}</span>`;
+/* ===== SOLA CAREER CENTER V7.1 企業情報・求人カード改善：最終上書き ===== */
+function v71LogoHtml(url, cls='v71-job-logo'){
+  if(url)return `<img class="${cls}" src="${esc(url)}" onerror="this.outerHTML='<div class=&quot;v71-job-logo-empty&quot;>🏢</div>'">`;
+  return `<div class="${cls==='v71-logo'?'v71-logo-placeholder':'v71-job-logo-empty'}">🏢</div>`;
 }
-function v70AppFlow(status){
-  const steps=['応募済','企業確認中','面接案内送信済','学生確認待ち','面接確定','面接実施済','結果通知済'];
-  const idx=Math.max(0,steps.findIndex(x=>x===status));
-  return `<div class="v70-flow">${steps.map((x,i)=>`<span class="${i<=idx?'on':''}">${x}</span>`).join('')}</div>`;
+function v71SafeUrl(u){
+  const s=String(u||'').trim();
+  if(!s)return '';
+  return (s.startsWith('http://')||s.startsWith('https://'))?s:'https://'+s;
 }
-async function v70GetCompany(){
+function v71JobLinks(j){
+  let h='';
+  if(j.attachment_url)h+=`<a target="_blank" class="link" href="${esc(j.attachment_url)}">📄 求人票</a> `;
+  if(j.poster_url)h+=`<a target="_blank" class="link" href="${esc(j.poster_url)}">🖼️ ポスター</a> `;
+  if(j.external_url)h+=`<a target="_blank" class="link" href="${esc(v71SafeUrl(j.external_url))}">🌐 求人URL</a> `;
+  if(j.company_website)h+=`<a target="_blank" class="link" href="${esc(v71SafeUrl(j.company_website))}">🏢 企業HP</a> `;
+  return h?`<div style="margin-top:8px">${h}</div>`:'';
+}
+function v71JobTags(j){
+  let h='';
+  if(String(j.foreigner_ok||'').includes('可'))h+='<span class="v71-tag green">外国人OK</span>';
+  if(String(j.requirements||j.work_content||'').includes('急募'))h+='<span class="v71-tag red">急募</span>';
+  if(j.japanese_level)h+=`<span class="v71-tag">${esc(j.japanese_level)}</span>`;
+  if(j.created_by_role==='company')h+='<span class="v71-tag orange">企業投稿</span>';
+  return h?`<div class="v71-tags">${h}</div>`:'';
+}
+function jobCard(j,k,apply=false,manage=false){
+  const logo=j.company_logo_url||j.logo_url||'';
+  let h=`<div class="v71-job-card">
+    <div class="v71-job-top">
+      ${v71LogoHtml(logo)}
+      <div>
+        <h3>${esc(j.company||'企業名未設定')}</h3>
+        <div class="v71-job-title">${esc(j.job_type||'職種未設定')}</div>
+      </div>
+    </div>
+    ${v71JobTags(j)}
+    <div class="v71-job-meta">📍 ${esc(j.work_place||'勤務地未設定')}　💴 ${esc(j.pay||'給与未設定')}　🕒 ${esc(j.work_time||'')}</div>
+    <p>${esc((j.work_content||'').slice(0,90))}${(j.work_content||'').length>90?'...':''}</p>
+    ${v71JobLinks(j)}
+    <div class="v70-toolbar">
+      <button class="secondary" onclick="openJobDetail(this)" data-job='${JSON.stringify(j).replace(/'/g,"&apos;")}' data-kind="${k}">詳細</button>`;
+  if(apply)h+=`<button onclick="applyJob('${k}','${j.id}')">応募する</button><button class="favorite-btn" onclick="toggleJobFavorite('${k}','${j.id}')">★ お気に入り</button>`;
+  if(manage){
+    h+=`<button onclick="companyJobForm('${k}','${j.id}')">編集</button><button class="red" onclick="deleteJob('${k}','${j.id}')">削除</button>`;
+  }
+  return h+'</div></div>';
+}
+async function v71GetCompany(){
   try{
     const id=await cid();
     const r=await sb.from('companies').select('*').eq('id',id).maybeSingle();
-    return r.data||{id,email:currentProfile?.email,company_name:currentProfile?.name||''};
+    return r.data||{id,email:currentProfile?.email,company_name:''};
   }catch(e){
     return {id:null,email:currentProfile?.email,company_name:currentProfile?.name||''};
   }
 }
-async function v70GetStudent(){
-  const st=await sid();
-  const r=await sb.from('students').select('*').eq('id',st).maybeSingle();
-  return r.data||{id:st,email:currentProfile?.email,name:currentProfile?.name||''};
-}
-async function createInAppNotice(targetRole,targetEmail,title,body,category,type){
-  const finalRole=targetEmail?'individual':(targetRole||'all');
-  const finalType=type||(targetEmail?'personal':'all');
-  return await sb.from('user_notifications').insert({
-    target_role:finalRole,
-    target_email:targetEmail||null,
-    title,
-    body,
-    category:category||'案内',
-    notice_type:finalType,
-    active:true,
-    read:false
-  });
-}
-async function v70Notify(email,title,body,category='案内'){
-  if(!email)return null;
-  return await createInAppNotice(null,email,title,body,category,'personal');
+async function v71UpdateCompanyProfile(companyId){
+  let logo_url=v('cjOldCompanyLogo');
+  if(document.getElementById('cjCompanyLogo')?.files?.[0])logo_url=await upload('cjCompanyLogo','company-logos','companylogo');
+  const company_name=v('cjCompanyName')||currentProfile?.name||currentProfile?.email;
+  const company_intro=v('cjCompanyIntro');
+  const company_website=v('cjCompanyWebsite');
+  if(companyId){
+    await sb.from('companies').update({company_name,logo_url,company_intro,company_website}).eq('id',companyId);
+  }
+  return {company_name,logo_url,company_intro,company_website};
 }
 
-/* 通知削除：学生・企業・管理者とも削除可能 */
-async function fetchMyNotices(role,email){
-  const [q1,q2,q3]=await Promise.all([
-    sb.from('user_notifications').select('*').eq('target_role','all').is('target_email',null).eq('active',true).order('created_at',{ascending:false}),
-    sb.from('user_notifications').select('*').eq('target_role',role).is('target_email',null).eq('active',true).order('created_at',{ascending:false}),
-    sb.from('user_notifications').select('*').eq('target_role','individual').eq('target_email',email).eq('active',true).order('created_at',{ascending:false})
-  ]);
-  const seen=new Set();
-  return [...(q1.data||[]),...(q2.data||[]),...(q3.data||[])].filter(x=>{
-    if(seen.has(x.id))return false;
-    seen.add(x.id);
-    const del=x.deleted_by||[];
-    if(Array.isArray(del)&&del.includes(email))return false;
-    return true;
-  }).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-}
-function noticeCard(n){
-  const cls=n.read?'notice-card-read':'notice-card-unread';
-  const readBtn=n.read?'<span class="summary" style="font-size:12px">✅ 既読</span>':`<button class="secondary" style="font-size:12px;padding:5px 10px" onclick="markNoticeRead('${n.id}')">既読にする</button>`;
-  return`<div class="mini-card ${cls}" style="margin-bottom:10px">
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">${typeof noticeTypeLabel==='function'?noticeTypeLabel(n):''}<span class="link">${esc(n.category||'案内')}</span>${!n.read?'<span class="notify-badge">未読</span>':''}</div>
-    <h3 style="margin:0 0 6px">${esc(n.title||'')}</h3>
-    <p style="white-space:pre-line;margin:0 0 8px">${esc(n.body||'')}</p>
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-      <small style="color:var(--muted)">${esc((n.created_at||'').slice(0,16).replace('T',' '))}</small>
-      <div>${readBtn}<button class="red" style="font-size:12px;padding:5px 10px" onclick="deleteMyNotice('${n.id}')">削除</button></div>
-    </div>
-  </div>`;
-}
-async function deleteMyNotice(id){
-  if(!confirm('この通知を削除しますか？'))return;
-  try{
-    const r=await sb.from('user_notifications').select('deleted_by').eq('id',id).maybeSingle();
-    const arr=Array.isArray(r.data?.deleted_by)?r.data.deleted_by:[];
-    const email=currentProfile?.email||'';
-    if(!arr.includes(email))arr.push(email);
-    await sb.from('user_notifications').update({deleted_by:arr}).eq('id',id);
-    await refreshNoticeBadge?.();
-    if(currentProfile?.role==='student')studentNotices();
-    if(currentProfile?.role==='company')companyNotices();
-    if(currentProfile?.role==='admin')adminNoticesV70?.();
-  }catch(e){alert('通知削除エラー：'+e.message)}
-}
-async function markAllNoticesRead(){
-  const notices=await fetchMyNotices(currentProfile.role,currentProfile.email);
-  const ids=notices.filter(x=>!x.read).map(x=>x.id);
-  if(ids.length)await sb.from('user_notifications').update({read:true,read_at:new Date().toISOString()}).in('id',ids);
-  await refreshNoticeBadge?.();
-  if(currentProfile.role==='student')studentNotices();
-  if(currentProfile.role==='company')companyNotices();
-}
-
-/* 企業マイページ：自社求人・応募者管理を追加 */
-async function companyDashboard(){
-  showPage('companyPage');
-  companyInfo.textContent=currentProfile.email;
-  const comp=await v70GetCompany();
-  const d=await sb.from('dispatch_jobs').select('id').or(`company_id.eq.${comp.id||'00000000-0000-0000-0000-000000000000'},company_email.eq.${currentProfile.email}`);
-  const c=await sb.from('career_jobs').select('id').or(`company_id.eq.${comp.id||'00000000-0000-0000-0000-000000000000'},company_email.eq.${currentProfile.email}`);
-  const apps=await v70LoadCompanyApplications();
-  const summaryBar=typeof noticeSummaryBar==='function'?await noticeSummaryBar('company',currentProfile.email,'companyNotices'):'';
-  companyContent.innerHTML=summaryBar+`
-    <h3>ダッシュボード</h3>
-    <div class="kpi">
-      <div class="stat"><span>自社求人</span><b>${(d.data||[]).length+(c.data||[]).length}</b></div>
-      <div class="stat"><span>応募者</span><b>${apps.length}</b></div>
-      <div class="stat"><span>面接待ち</span><b>${apps.filter(x=>/面接|学生確認待ち/.test(x.process_status||x.status||'')).length}</b></div>
-    </div>
-    <div class="v70-toolbar">
-      <button onclick="companyJobForm()">求人追加</button>
-      <button class="secondary" onclick="companyJobs()">自社求人管理</button>
-      <button class="secondary" onclick="companyApplicants()">応募者管理</button>
-      <button class="secondary" onclick="companyInterviews()">面接管理</button>
-      <button class="secondary" onclick="companyNotices()">通知</button>
-    </div>
-    <div class="alert info">学生応募は企業へ直接届きます。管理者も進捗を確認できます。</div>`;
-  await refreshNoticeBadge?.();
-}
-function companyJobForm(kind='dispatch',id=''){
+/* 企業求人フォーム：会社名・ロゴ・紹介文を編集可能にする */
+async function companyJobForm(kind='dispatch',id=''){
+  const comp=await v71GetCompany();
   companyContent.innerHTML=`
     <button class="gray" onclick="companyJobs()">← 自社求人へ戻る</button>
     <h3>${id?'自社求人編集':'自社求人追加'}</h3>
-    <div class="alert info">企業が登録した求人は学生応募時に企業へ直接通知されます。管理者も進捗を確認できます。</div>
-    <label>求人区分</label><select id="cjkind"><option value="dispatch">人材派遣・アルバイト</option><option value="career">就職支援</option></select>
-    <div class="v70-grid"><div><label>募集職種</label><input id="cjtype"></div><div><label>募集人数</label><input id="cjquota" type="number" value="1"></div></div>
+    <div class="alert info">企業名・ロゴ・企業紹介は求人カードと応募者画面に表示されます。</div>
+
+    <div class="v71-form-section">企業情報</div>
+    <label>企業名（必須）</label>
+    <input id="cjCompanyName" placeholder="例：株式会社 寺子屋" value="${esc(comp.company_name||comp.name||'')}">
+    <div class="v71-form-grid">
+      <div>
+        <label>企業ロゴ（任意）</label>
+        <input id="cjCompanyLogo" type="file" accept="image/*">
+        <div class="summary">現在：${comp.logo_url?`<a class="link" target="_blank" href="${esc(comp.logo_url)}">ロゴを見る</a>`:'未登録'}</div>
+      </div>
+      <div>
+        <label>企業ホームページ（任意）</label>
+        <input id="cjCompanyWebsite" placeholder="https://..." value="${esc(comp.company_website||'')}">
+      </div>
+    </div>
+    <label>企業紹介（任意）</label>
+    <textarea id="cjCompanyIntro" placeholder="企業の特徴、事業内容、留学生へのメッセージなど">${esc(comp.company_intro||'')}</textarea>
+
+    <div class="v71-form-section">求人情報</div>
+    <label>求人区分</label>
+    <select id="cjkind"><option value="dispatch">人材派遣・アルバイト</option><option value="career">就職支援</option></select>
+    <div class="v71-form-grid">
+      <div><label>募集職種</label><input id="cjtype"></div>
+      <div><label>募集人数</label><input id="cjquota" type="number" value="1"></div>
+    </div>
     <label>仕事内容</label><textarea id="cjwork"></textarea>
-    <div class="v70-grid"><div><label>勤務地</label><input id="cjplace"></div><div><label>給与</label><input id="cjpay"></div></div>
-    <div class="v70-grid"><div><label>勤務時間</label><input id="cjtime"></div><div><label>外国人応募</label><select id="cjForeign"><option>可</option><option>相談</option><option>不可</option></select></div></div>
-    <div class="v70-grid"><div><label>日本語レベル</label><input id="cjJapanese" placeholder="N3以上、N4相談可など"></div><div><label>公開状態</label><select id="cjActive"><option value="true">公開</option><option value="false">非公開</option></select></div></div>
+    <div class="v71-form-grid">
+      <div><label>勤務地</label><input id="cjplace"></div>
+      <div><label>給与</label><input id="cjpay"></div>
+    </div>
+    <div class="v71-form-grid">
+      <div><label>勤務時間</label><input id="cjtime"></div>
+      <div><label>外国人応募</label><select id="cjForeign"><option>可</option><option>相談</option><option>不可</option></select></div>
+    </div>
+    <div class="v71-form-grid">
+      <div><label>日本語レベル</label><input id="cjJapanese" placeholder="N3以上、N4相談可など"></div>
+      <div><label>公開状態</label><select id="cjActive"><option value="true">公開</option><option value="false">非公開</option></select></div>
+    </div>
     <label>応募条件</label><textarea id="cjrequirements"></textarea>
-    <h4 class="section-title">添付・URL（任意）</h4>
+    <div class="v71-form-section">添付・URL（任意）</div>
     <label>求人票ファイル</label><input id="cjAttachment" type="file">
     <label>ポスター・チラシ</label><input id="cjPoster" type="file" accept="image/*,.pdf">
-    <label>求人URL・企業ページURL</label><input id="cjUrl" placeholder="https://...">
+    <label>求人URL</label><input id="cjUrl" placeholder="https://...">
+
+    <input type="hidden" id="cjOldCompanyLogo" value="${esc(comp.logo_url||'')}">
     <input type="hidden" id="cjEditKind" value="${kind}">
     <input type="hidden" id="cjEditId" value="${id}">
-    <button onclick="companySaveJobV70(false)">保存して公開</button>
-    <button class="yellow" onclick="companySaveJobV70(true)">下書き保存</button>`;
-  if(id)companyLoadJobForEdit(kind,id);
+    <button onclick="companySaveJobV71(false)">保存して公開</button>
+    <button class="yellow" onclick="companySaveJobV71(true)">下書き保存</button>`;
+  cjkind.value=kind||'dispatch';
+  if(id)await companyLoadJobForEditV71(kind,id);
 }
-async function companyLoadJobForEdit(kind,id){
-  const r=await sb.from(v70JobTable(kind)).select('*').eq('id',id).maybeSingle();
+async function companyLoadJobForEditV71(kind,id){
+  const r=await sb.from(kind==='career'?'career_jobs':'dispatch_jobs').select('*').eq('id',id).maybeSingle();
   const j=r.data;if(!j)return;
   cjkind.value=kind;cjtype.value=j.job_type||'';cjquota.value=j.quota||1;cjwork.value=j.work_content||'';cjplace.value=j.work_place||'';cjpay.value=j.pay||'';cjtime.value=j.work_time||'';cjForeign.value=j.foreigner_ok||'可';cjJapanese.value=j.japanese_level||'';cjActive.value=String(j.active!==false);cjrequirements.value=j.requirements||'';cjUrl.value=j.external_url||'';
+  if(j.company) cjCompanyName.value=j.company;
+  if(j.company_logo_url||j.logo_url) cjOldCompanyLogo.value=j.company_logo_url||j.logo_url;
+  if(j.company_intro) cjCompanyIntro.value=j.company_intro;
+  if(j.company_website) cjCompanyWebsite.value=j.company_website;
 }
-async function companySaveJobV70(draft){
+async function companySaveJobV71(draft){
   try{
-    const comp=await v70GetCompany();
+    const comp=await v71GetCompany();
+    const profile=await v71UpdateCompanyProfile(comp.id);
     const oldKind=v('cjEditKind')||v('cjkind'), id=v('cjEditId');
-    const kind=v('cjkind'), tab=v70JobTable(kind);
+    const kind=v('cjkind'), tab=kind==='career'?'career_jobs':'dispatch_jobs';
     let attachment_url='',poster_url='';
     if(id&&oldKind===kind){
       const old=await sb.from(tab).select('*').eq('id',id).maybeSingle();
@@ -4151,7 +3970,11 @@ async function companySaveJobV70(draft){
     const p={
       company_id:comp.id,
       company_email:currentProfile.email,
-      company:comp.company_name||comp.name||currentProfile.name||currentProfile.email,
+      company:profile.company_name,
+      company_logo_url:profile.logo_url,
+      logo_url:profile.logo_url,
+      company_intro:profile.company_intro,
+      company_website:profile.company_website,
       job_type:v('cjtype')||'未入力職種',
       work_content:v('cjwork'),
       work_place:v('cjplace'),
@@ -4173,7 +3996,7 @@ async function companySaveJobV70(draft){
     let r;
     if(id&&oldKind===kind)r=await sb.from(tab).update(p).eq('id',id);
     else{
-      if(id&&oldKind!==kind)await sb.from(v70JobTable(oldKind)).delete().eq('id',id);
+      if(id&&oldKind!==kind)await sb.from(oldKind==='career'?'career_jobs':'dispatch_jobs').delete().eq('id',id);
       r=await sb.from(tab).insert(p);
     }
     if(r.error)throw r.error;
@@ -4182,248 +4005,85 @@ async function companySaveJobV70(draft){
   }catch(e){alert('求人保存エラー：'+e.message)}
 }
 async function companyJobs(){
-  const comp=await v70GetCompany();
+  const comp=await v71GetCompany();
   const cidSafe=comp.id||'00000000-0000-0000-0000-000000000000';
   const d=await sb.from('dispatch_jobs').select('*').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`).order('created_at',{ascending:false});
   const c=await sb.from('career_jobs').select('*').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`).order('created_at',{ascending:false});
   const rows=[...(d.data||[]).map(j=>({...j,_kind:'dispatch'})),...(c.data||[]).map(j=>({...j,_kind:'career'}))];
-  companyContent.innerHTML=`<button class="gray" onclick="companyDashboard()">← 戻る</button><h3>自社求人管理</h3><div class="v70-toolbar"><button onclick="companyJobForm()">求人追加</button></div>`+
-    (rows.map(j=>`<div class="v70-card"><h3>${esc(j.company)} / ${esc(j.job_type)}</h3><p>${esc(j.work_place||'')} / ${esc(j.pay||'')} / ${esc(j.work_time||'')}</p><div>${v70StatusBadge(j.active?'公開':'非公開')} ${v70StatusBadge(j.application_route||'企業へ直接送信')}</div><div class="v70-toolbar"><button onclick="companyJobForm('${j._kind}','${j.id}')">編集</button><button class="red" onclick="deleteJob('${j._kind}','${j.id}')">削除</button></div></div>`).join('')||'<div class="v70-card">自社求人はありません。</div>');
+  companyContent.innerHTML=`<button class="gray" onclick="companyDashboard()">← 戻る</button>
+    <h3>自社求人管理</h3>
+    <div class="v71-company-head">${v71LogoHtml(comp.logo_url,'v71-logo')}<div><h3>${esc(comp.company_name||'企業名未設定')}</h3><p>${esc(comp.company_intro||'企業紹介は未登録です。')}</p>${comp.company_website?`<p><a class="link" target="_blank" href="${esc(v71SafeUrl(comp.company_website))}">企業ホームページ</a></p>`:''}</div></div>
+    <div class="v70-toolbar"><button onclick="companyJobForm()">求人追加</button></div>`+
+    (rows.map(j=>jobCard(j,j._kind,false,true)).join('')||'<div class="v71-job-card">自社求人はありません。</div>');
 }
 
-/* 学生応募：企業へ直接送信 */
-async function applyJob(kind,id){
-  try{
-    const st=await v70GetStudent();
-    const tab=v70AppTable(kind);
-    const jt=v70JobTable(kind);
-    const ex=await sb.from(tab).select('id').eq('student_id',st.id).eq('job_id',id).maybeSingle();
-    if(ex.data)return alert('応募済みです');
-    const jr=await sb.from(jt).select('*').eq('id',id).maybeSingle();
-    const j=jr.data||{};
-    const app={
-      student_id:st.id,
-      student_email:st.email||currentProfile.email,
-      student_name:st.name||currentProfile.name||currentProfile.email,
-      job_id:id,
-      job_kind:kind,
-      company_id:j.company_id||null,
-      company_email:j.company_email||null,
-      company_name:j.company||'',
-      status:'応募済',
-      process_status:j.company_email?'企業確認中':'管理者確認中',
-      application_route:'企業へ直接送信',
-      admin_visible:true,
-      forwarded_to_company:!!j.company_email,
-      resume_url:st.resume_attachment_url||st.resume_url||'',
-      last_action_by:'student'
-    };
-    const r=await sb.from(tab).insert(app).select('id').single();
-    if(r.error)throw r.error;
-    await v70Notify(j.company_email,'新しい応募が届きました',`${app.student_name} さんが「${j.job_type||''}」に応募しました。応募者管理から確認してください。`,'応募');
-    await createInAppNotice('admin',null,'新しい学生応募',`${app.student_name} さんが ${j.company||''} / ${j.job_type||''} に応募しました。進捗管理で確認できます。`,'応募','personal');
-    alert('応募しました。企業へ応募情報を送信しました。');
-    closeModal?.();
-  }catch(e){alert('応募エラー：'+e.message)}
+/* 求人詳細：企業ロゴ・企業紹介を表示 */
+function openJobDetail(el){
+  const j=JSON.parse(el.dataset.job);
+  const kind=el.dataset.kind;
+  const applyBtn=currentProfile?.role==='student'?`<div style="margin-top:16px"><button onclick="applyJob('${kind}','${esc(j.id)}');closeModal()">この求人に応募する ✋</button></div>`:'';
+  modalContent.innerHTML=`
+    <div class="v71-detail-company">
+      ${v71LogoHtml(j.company_logo_url||j.logo_url,'v71-logo')}
+      <div>
+        <span class="link">${kind==='career'?'就職支援':'人材派遣'}</span>
+        <h2 style="margin:6px 0 2px">${esc(j.company||'企業名未設定')}</h2>
+        <p style="margin:0;color:var(--muted)">${esc(j.company_intro||'')}</p>
+      </div>
+    </div>
+    <h3>${esc(j.job_type||'職種未設定')}</h3>
+    ${v71JobTags(j)}
+    <table style="width:100%;font-size:14px;border-collapse:collapse">
+      <tr><th style="width:110px;background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">勤務地</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.work_place||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">給与</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.pay||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">勤務時間</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.work_time||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">仕事内容</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.work_content||'—')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">応募条件</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;white-space:pre-line">${esc(j.requirements||'—')}</td></tr>
+      ${j.foreigner_ok?`<tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">外国人応募</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.foreigner_ok)}</td></tr>`:''}
+      ${j.japanese_level?`<tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">日本語レベル</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.japanese_level)}</td></tr>`:''}
+    </table>
+    ${v71JobLinks(j)}
+    ${applyBtn}`;
+  modal.classList.add('on');
 }
 
-/* 企業応募者管理 */
-async function v70LoadCompanyApplications(){
-  const comp=await v70GetCompany();
-  const cidSafe=comp.id||'00000000-0000-0000-0000-000000000000';
-  const [dj,cj,da,ca,students]=await Promise.all([
-    sb.from('dispatch_jobs').select('*').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`),
-    sb.from('career_jobs').select('*').or(`company_id.eq.${cidSafe},company_email.eq.${currentProfile.email}`),
-    sb.from('dispatch_apps').select('*').order('created_at',{ascending:false}),
-    sb.from('career_apps').select('*').order('created_at',{ascending:false}),
-    sb.from('students').select('*')
-  ]);
-  const jobMap={};
-  (dj.data||[]).forEach(j=>jobMap['dispatch:'+j.id]={...j,_kind:'dispatch'});
-  (cj.data||[]).forEach(j=>jobMap['career:'+j.id]={...j,_kind:'career'});
-  const stuMap={};(students.data||[]).forEach(s=>stuMap[s.id]=s);
-  const rows=[];
-  (da.data||[]).forEach(a=>{const j=jobMap['dispatch:'+a.job_id]; if(j||a.company_email===currentProfile.email)rows.push({...a,_kind:'dispatch',job:j,student:stuMap[a.student_id]});});
-  (ca.data||[]).forEach(a=>{const j=jobMap['career:'+a.job_id]; if(j||a.company_email===currentProfile.email)rows.push({...a,_kind:'career',job:j,student:stuMap[a.student_id]});});
-  return rows.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
-}
-async function companyApplicants(){
-  const rows=await v70LoadCompanyApplications();
-  let h=`<button class="gray" onclick="companyDashboard()">← 戻る</button><h3>応募者管理</h3><div class="alert info">学生応募は企業へ直接届きます。管理者も同じ進捗を確認できます。</div><div class="v70-table-wrap"><table class="v70-table"><tr><th>学生</th><th>求人</th><th>状態</th><th>履歴書</th><th>操作</th></tr>`;
-  rows.forEach(a=>{
-    const s=a.student||{};
-    const j=a.job||{};
-    const resume=a.resume_url||s.resume_attachment_url||s.resume_url||'';
-    h+=`<tr><td><b>${esc(a.student_name||s.name||'')}</b><br><span class="v70-mini">${esc(a.student_email||s.email||'')}</span></td><td>${v70JobKindLabel(a._kind)}<br><b>${esc(j.job_type||'')}</b><br><span class="v70-mini">${esc(j.company||a.company_name||'')}</span></td><td>${v70StatusBadge(a.process_status||a.status)}${v70AppFlow(a.process_status||a.status)}</td><td>${resume?`<a class="link" target="_blank" href="${esc(resume)}">履歴書を見る</a>`:'未登録'}</td><td><button onclick="companyApplicantDetail('${a._kind}','${a.id}')">詳細</button><button class="secondary" onclick="v70CompanyMessageForm('${a._kind}','${a.id}')">連絡</button></td></tr>`;
-  });
-  h+='</table></div>';
-  companyContent.innerHTML=h;
-}
-async function companyApplicantDetail(kind,id){
-  const app=await sb.from(v70AppTable(kind)).select('*').eq('id',id).maybeSingle();
-  const a=app.data;if(!a)return alert('応募情報が見つかりません');
-  const s=(await sb.from('students').select('*').eq('id',a.student_id).maybeSingle()).data||{};
-  const j=(await sb.from(v70JobTable(kind)).select('*').eq('id',a.job_id).maybeSingle()).data||{};
-  const resume=a.resume_url||s.resume_attachment_url||s.resume_url||'';
-  companyContent.innerHTML=`<button class="gray" onclick="companyApplicants()">← 応募者一覧へ戻る</button><h3>応募者詳細</h3>
-    <div class="v70-card"><h3>${esc(a.student_name||s.name||'')}</h3><p>${esc(a.student_email||s.email||'')} / ${esc(s.phone||'')}</p><p>学校：${esc(s.school||'SOLA学園')} / 学科：${esc(s.department||'')}</p><p>日本語：${esc(s.japanese_level||s.jlpt||'')}</p>${resume?`<p><a class="link" target="_blank" href="${esc(resume)}">履歴書PDFを開く</a></p>`:''}</div>
-    <div class="v70-card"><h3>応募求人</h3><p>${esc(j.company||a.company_name||'')} / ${esc(j.job_type||'')}</p>${v70StatusBadge(a.process_status||a.status)}${v70AppFlow(a.process_status||a.status)}</div>
-    <div class="v70-toolbar">
-      <button onclick="v70InterviewForm('${kind}','${id}')">面接案内を送信</button>
-      <button class="secondary" onclick="v70CompanyMessageForm('${kind}','${id}')">学生へ連絡</button>
-      <button class="green" onclick="v70SetApplicationResult('${kind}','${id}','採用')">採用</button>
-      <button class="red" onclick="v70SetApplicationResult('${kind}','${id}','不採用')">不採用</button>
-      <button class="yellow" onclick="v70SetApplicationResult('${kind}','${id}','保留')">保留</button>
-      <button class="secondary" onclick="v70SetApplicationResult('${kind}','${id}','未参加')">未参加</button>
-    </div>`;
-}
-async function v70InterviewForm(kind,id){
-  companyContent.innerHTML=`<button class="gray" onclick="companyApplicantDetail('${kind}','${id}')">← 戻る</button><h3>面接案内</h3>
-    <label>面接日時</label><input id="v70InterviewTime" type="datetime-local">
-    <label>面接方法</label><select id="v70InterviewMethod"><option>対面</option><option>オンライン</option></select>
-    <label>面接場所</label><input id="v70InterviewPlace" placeholder="学校、企業所在地など">
-    <label>Zoom URL / Google Meet URL</label><input id="v70InterviewUrl" placeholder="https://...">
-    <label>学生へのメッセージ</label><textarea id="v70InterviewMsg">面接のご案内です。内容をご確認のうえ、参加可否を選択してください。</textarea>
-    <button onclick="v70SendInterview('${kind}','${id}')">面接案内を送信</button>`;
-}
-async function v70SendInterview(kind,id){
-  try{
-    const app=(await sb.from(v70AppTable(kind)).select('*').eq('id',id).maybeSingle()).data;
-    if(!app)throw new Error('応募情報が見つかりません');
-    const comp=await v70GetCompany();
-    const p={
-      application_id:id,
-      application_kind:kind,
-      student_id:app.student_id,
-      company_id:comp.id,
-      company_email:currentProfile.email,
-      interview_time:v('v70InterviewTime'),
-      method:v('v70InterviewMethod'),
-      location:v('v70InterviewPlace'),
-      meet_url:v('v70InterviewUrl'),
-      message:v('v70InterviewMsg'),
-      status:'学生確認待ち',
-      title:'面接案内'
-    };
-    const r=await sb.from('interviews').insert(p);
-    if(r.error)throw r.error;
-    await sb.from(v70AppTable(kind)).update({status:'面接案内送信済',process_status:'学生確認待ち',interview_status:'学生確認待ち',last_action_by:'company'}).eq('id',id);
-    await v70Notify(app.student_email,'面接案内が届きました',`${comp.company_name||currentProfile.email} から面接案内が届きました。マイページで確認してください。`,'面接');
-    await createInAppNotice('admin',null,'面接案内送信',`${comp.company_name||currentProfile.email} が学生へ面接案内を送信しました。`,'面接','personal');
-    alert('面接案内を送信しました。');
-    companyApplicantDetail(kind,id);
-  }catch(e){alert('面接案内エラー：'+e.message)}
-}
-async function v70SetApplicationResult(kind,id,result){
-  if(!confirm(`面接結果を「${result}」として通知しますか？`))return;
-  const app=(await sb.from(v70AppTable(kind)).select('*').eq('id',id).maybeSingle()).data;
-  const status=result==='採用'?'採用':result==='不採用'?'不採用':result==='未参加'?'未参加':'保留';
-  await sb.from(v70AppTable(kind)).update({status,process_status:'結果通知済',result_status:result,last_action_by:'company'}).eq('id',id);
-  await v70Notify(app.student_email,`面接結果：${result}`,`応募中の求人について、企業より面接結果「${result}」が登録されました。`,'面接結果');
-  await createInAppNotice('admin',null,`面接結果：${result}`,`企業が面接結果「${result}」を登録しました。`,'面接結果','personal');
-  alert('結果を登録し、学生へ通知しました。');
-  companyApplicantDetail(kind,id);
-}
-async function v70CompanyMessageForm(kind,id){
-  companyContent.innerHTML=`<button class="gray" onclick="companyApplicantDetail('${kind}','${id}')">← 戻る</button><h3>学生へ連絡</h3><label>件名</label><input id="v70MsgTitle" value="企業からの連絡"><label>本文</label><textarea id="v70MsgBody"></textarea><button onclick="v70SendCompanyMessage('${kind}','${id}')">送信</button>`;
-}
-async function v70SendCompanyMessage(kind,id){
-  const app=(await sb.from(v70AppTable(kind)).select('*').eq('id',id).maybeSingle()).data;
-  if(!app)return alert('応募情報が見つかりません');
-  await v70Notify(app.student_email,v('v70MsgTitle'),v('v70MsgBody'),'企業連絡');
-  await sb.from('chat_messages').insert({user_email:app.student_email,user_role:'student',user_name:app.student_name||'',sender_role:'company',sender:'company',company_email:currentProfile.email,message:v('v70MsgBody'),read_by_admin:false,read_by_user:false});
-  alert('学生へ連絡しました。');
-  companyApplicantDetail(kind,id);
-}
-
-/* 学生：面接通知の確認 */
-async function studentInterviews(){
-  const st=await v70GetStudent();
-  const r=await sb.from('interviews').select('*').eq('student_id',st.id).order('interview_time',{ascending:true});
-  studentContent.innerHTML=`<button class="gray" onclick="studentDashboard()">← 戻る</button><h3>面接予定</h3>`+
-    ((r.data||[]).map(x=>`<div class="v70-card"><h3>${esc(x.title||'面接')}</h3><p>日時：${esc((x.interview_time||'').replace('T',' '))}</p><p>方法：${esc(x.method||'')}</p><p>場所：${esc(x.location||'')}</p>${x.meet_url?`<p><a class="link" target="_blank" href="${esc(x.meet_url)}">オンラインURLを開く</a></p>`:''}<p>${esc(x.message||'')}</p>${v70StatusBadge(x.status)}<div class="v70-toolbar"><button onclick="v70StudentConfirmInterview('${x.id}','参加する')">参加する</button><button class="yellow" onclick="v70StudentConfirmInterview('${x.id}','日程変更希望')">日程変更希望</button><button class="red" onclick="v70StudentConfirmInterview('${x.id}','不参加')">不参加</button></div></div>`).join('')||'<div class="v70-card">面接予定はありません。</div>');
-}
-async function v70StudentConfirmInterview(id,answer){
-  const it=(await sb.from('interviews').select('*').eq('id',id).maybeSingle()).data;
-  if(!it)return;
-  const status=answer==='参加する'?'面接確定':answer;
-  await sb.from('interviews').update({student_response:answer,status}).eq('id',id);
-  if(it.application_id&&it.application_kind)await sb.from(v70AppTable(it.application_kind)).update({process_status:status,interview_status:status,last_action_by:'student'}).eq('id',it.application_id);
-  await v70Notify(it.company_email,'学生が面接案内を確認しました',`学生の回答：${answer}`,'面接');
-  await createInAppNotice('admin',null,'学生が面接案内を確認',`学生の回答：${answer}`,'面接','personal');
-  alert('回答を送信しました。');
-  studentInterviews();
-}
-
-/* 管理者：応募進捗管理・企業送信状況確認 */
-async function adminApplications(){
-  const rows=await v70LoadAllApplications();
-  let h=`<button class="gray" onclick="adminDashboard()">← 戻る</button><h3>応募管理・採用進捗</h3><div class="alert info">応募方式：企業へ直接送信。管理者は全件の進捗を確認できます。</div><div class="v70-table-wrap"><table class="v70-table"><tr><th>学生</th><th>企業・求人</th><th>応募方式</th><th>進捗</th><th>操作</th></tr>`;
-  rows.forEach(a=>{
-    h+=`<tr><td><b>${esc(a.student_name||a.student?.name||'')}</b><br><span class="v70-mini">${esc(a.student_email||a.student?.email||'')}</span></td><td>${esc(a.company_name||a.job?.company||'')}<br><b>${esc(a.job?.job_type||'')}</b></td><td>${esc(a.application_route||'企業へ直接送信')}</td><td>${v70StatusBadge(a.process_status||a.status)}${v70AppFlow(a.process_status||a.status)}</td><td><button onclick="adminApplicationDetailV70('${a._kind}','${a.id}')">詳細</button><button class="secondary" onclick="adminForwardToCompanyV70('${a._kind}','${a.id}')">企業へ再通知</button></td></tr>`;
-  });
-  h+='</table></div>';
-  adminContent.innerHTML=h;
-}
-async function v70LoadAllApplications(){
-  const [da,ca,st,dj,cj]=await Promise.all([
-    sb.from('dispatch_apps').select('*').order('created_at',{ascending:false}),
-    sb.from('career_apps').select('*').order('created_at',{ascending:false}),
-    sb.from('students').select('*'),
-    sb.from('dispatch_jobs').select('*'),
-    sb.from('career_jobs').select('*')
-  ]);
-  const sm={};(st.data||[]).forEach(x=>sm[x.id]=x);
-  const jm={};(dj.data||[]).forEach(x=>jm['dispatch:'+x.id]=x);(cj.data||[]).forEach(x=>jm['career:'+x.id]=x);
-  return [...(da.data||[]).map(a=>({...a,_kind:'dispatch',student:sm[a.student_id],job:jm['dispatch:'+a.job_id]})),...(ca.data||[]).map(a=>({...a,_kind:'career',student:sm[a.student_id],job:jm['career:'+a.job_id]}))];
-}
-async function adminApplicationDetailV70(kind,id){
-  const a=(await sb.from(v70AppTable(kind)).select('*').eq('id',id).maybeSingle()).data;
-  const s=(await sb.from('students').select('*').eq('id',a.student_id).maybeSingle()).data||{};
-  const j=(await sb.from(v70JobTable(kind)).select('*').eq('id',a.job_id).maybeSingle()).data||{};
-  const resume=a.resume_url||s.resume_attachment_url||'';
-  adminContent.innerHTML=`<button class="gray" onclick="adminApplications()">← 応募管理へ戻る</button><h3>応募詳細</h3><div class="v70-card"><h3>${esc(a.student_name||s.name||'')}</h3><p>${esc(a.student_email||s.email||'')}</p>${resume?`<p><a class="link" target="_blank" href="${esc(resume)}">履歴書を見る</a></p>`:''}</div><div class="v70-card"><h3>${esc(j.company||a.company_name||'')}</h3><p>${esc(j.job_type||'')}</p>${v70StatusBadge(a.process_status||a.status)}${v70AppFlow(a.process_status||a.status)}</div><div class="v70-toolbar"><button onclick="adminForwardToCompanyV70('${kind}','${id}')">企業へ再通知</button><button class="secondary" onclick="adminApplications()">一覧へ戻る</button></div>`;
-}
-async function adminForwardToCompanyV70(kind,id){
-  const a=(await sb.from(v70AppTable(kind)).select('*').eq('id',id).maybeSingle()).data;
-  const j=(await sb.from(v70JobTable(kind)).select('*').eq('id',a.job_id).maybeSingle()).data||{};
-  const email=a.company_email||j.company_email;
-  if(!email)return alert('企業メールアドレスが登録されていません。');
-  await sb.from(v70AppTable(kind)).update({forwarded_to_company:true,process_status:'企業確認中',application_route:'企業へ直接送信',last_action_by:'admin'}).eq('id',id);
-  await v70Notify(email,'応募情報の確認依頼',`${a.student_name||'学生'} さんの応募情報をご確認ください。`,'応募');
-  alert('企業へ通知しました。');
-  adminApplications();
-}
-
-/* 企業・学生・管理者通知ページ：削除対応 */
-async function studentNotices(){
-  const notices=await fetchMyNotices('student',currentProfile.email);
-  const unread=notices.filter(x=>!x.read);
-  studentContent.innerHTML=`<button class="gray" onclick="studentDashboard()">← 戻る</button><h3>通知</h3>${typeof pushButtonHtml==='function'?await pushButtonHtml():''}<div class="v70-toolbar">${unread.length?`<button class="secondary" onclick="markAllNoticesRead()">すべて既読</button>`:''}</div><div>${notices.map(noticeCard).join('')||'通知はありません'}</div>`;
-  await refreshNoticeBadge?.();
-}
-async function companyNotices(){
-  const notices=await fetchMyNotices('company',currentProfile.email);
-  const unread=notices.filter(x=>!x.read);
-  companyContent.innerHTML=`<button class="gray" onclick="companyDashboard()">← 戻る</button><h3>通知</h3><div class="v70-toolbar">${unread.length?`<button class="secondary" onclick="markAllNoticesRead()">すべて既読</button>`:''}</div><div>${notices.map(noticeCard).join('')||'通知はありません'}</div>`;
-  await refreshNoticeBadge?.();
-}
-async function adminNoticesV70(){
-  const r=await sb.from('user_notifications').select('*').eq('active',true).order('created_at',{ascending:false}).limit(200);
-  adminContent.innerHTML=`<button class="gray" onclick="adminDashboard()">← 戻る</button><h3>通知管理</h3>`+((r.data||[]).map(noticeCard).join('')||'通知はありません');
-}
-
-/* メニュー補助 */
+/* 応募時も企業名・ロゴを保持 */
 try{
-  const oldAdminDashboardV70=adminDashboard;
-  adminDashboard=async function(){
-    await oldAdminDashboardV70();
+  const oldApplyJobV71=applyJob;
+  applyJob=async function(kind,id){
     try{
-      const tabs=document.querySelector('#adminPage .tabs');
-      if(tabs&&!document.getElementById('adminNoticeManageV70')){
-        const b=document.createElement('button');b.id='adminNoticeManageV70';b.textContent='通知管理';b.onclick=adminNoticesV70;tabs.appendChild(b);
-      }
-    }catch(e){}
+      const st=await v70GetStudent?.() || {id:await sid(),email:currentProfile.email,name:currentProfile.name};
+      const tab=kind==='career'?'career_apps':'dispatch_apps';
+      const jt=kind==='career'?'career_jobs':'dispatch_jobs';
+      const ex=await sb.from(tab).select('id').eq('student_id',st.id).eq('job_id',id).maybeSingle();
+      if(ex.data)return alert('応募済みです');
+      const jr=await sb.from(jt).select('*').eq('id',id).maybeSingle();
+      const j=jr.data||{};
+      const app={
+        student_id:st.id,
+        student_email:st.email||currentProfile.email,
+        student_name:st.name||currentProfile.name||currentProfile.email,
+        job_id:id,
+        job_kind:kind,
+        company_id:j.company_id||null,
+        company_email:j.company_email||null,
+        company_name:j.company||'',
+        company_logo_url:j.company_logo_url||j.logo_url||'',
+        status:'応募済',
+        process_status:j.company_email?'企業確認中':'管理者確認中',
+        application_route:'企業へ直接送信',
+        admin_visible:true,
+        forwarded_to_company:!!j.company_email,
+        resume_url:st.resume_attachment_url||st.resume_url||'',
+        last_action_by:'student'
+      };
+      const r=await sb.from(tab).insert(app).select('id').single();
+      if(r.error)throw r.error;
+      if(typeof v70Notify==='function')await v70Notify(j.company_email,'新しい応募が届きました',`${app.student_name} さんが「${j.job_type||''}」に応募しました。応募者管理から確認してください。`,'応募');
+      if(typeof createInAppNotice==='function')await createInAppNotice('admin',null,'新しい学生応募',`${app.student_name} さんが ${j.company||''} / ${j.job_type||''} に応募しました。進捗管理で確認できます。`,'応募','personal');
+      alert('応募しました。企業へ応募情報を送信しました。');
+      closeModal?.();
+    }catch(e){alert('応募エラー：'+e.message)}
   }
 }catch(e){}
 
