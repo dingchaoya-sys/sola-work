@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SOLA CAREER CENTER V7.2.1</title>
+<title>SOLA CAREER CENTER V7.2.3</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
 /* ===== V5.5.2 チャット返信・求人添付修正：最終上書き ===== */
 function v552RoleLabel(role){
@@ -289,7 +289,138 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{v56AddPasswordM
 function v561Download(filename, content, type='text/plain;charset=utf-8'){const blob=new Blob([content],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url)}
 function v561CsvCell(v){return `"${String(v??'').replace(/"/g,'""')}"`}
 function v561RowsToCsv(headers,rows){return '\ufeff'+[headers.map(v561CsvCell).join(','),...rows.map(r=>headers.map(h=>v561CsvCell(r[h])).join(','))].join('\n')}
-function v561RowsToExcel(filename,title,headers,rows){const body='<html><head><meta charset="UTF-8"></head><body><h2>'+esc(title)+'</h2><table border="1"><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+headers.map(h=>'<td>'+esc(r[h]??'')+'</td>').join('')+'</tr>').join('')+'</table></body></html>';v561Download(filename,body,'application/vnd.ms-excel;charset=utf-8')}
+function v561RowsToExcel(filename,title,headers,rows){const body='<html><head><meta charset="UTF-8"></head><body><h2>'+esc(title)+'</h2><table border="1"><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+headers.map(h=>'<td>'+esc(r[h]??'')+'</td>').join('')+'</tr>').join('')+'</table>
+<script>
+/* ===== SOLA CAREER CENTER V7.2.3 強制最終首頁修正 ===== */
+(function(){
+  function esc723(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+  function logo723(j){
+    const url=j.company_logo_url||j.logo_url||'';
+    if(url)return `<img class="v723-logo" src="${esc723(url)}" onerror="this.outerHTML='<div class=&quot;v723-logo&quot;>🏢</div>'">`;
+    return `<div class="v723-logo">🏢</div>`;
+  }
+  function friendly723(j){return /可|外国人|留学生|N3|N4|歓迎/.test([j.foreigner_ok,j.japanese_level,j.requirements,j.work_content].map(x=>String(x||'')).join(' '));}
+  function notice723(n){
+    const cat=n.category||'案内';
+    const cls=cat==='重要'?'red':cat==='求人'?'orange':'green';
+    return `<div class="v723-notice" onclick="openNoticeDetail&&openNoticeDetail('${n.id}')"><span class="v723-tag ${cls}">${esc723(cat)}</span><b>${esc723(n.title||'')}</b><span class="v723-date">${esc723((n.created_at||'').slice(0,10))}</span></div>`;
+  }
+  function job723(j,kind){
+    return `<div class="v723-job" onclick="openJobDetail&&openJobDetail(this)" data-kind="${kind}" data-job='${JSON.stringify(j).replace(/'/g,"&apos;")}'>
+      ${logo723(j)}
+      <div><h3>${esc723(j.company||'企業名未設定')}</h3><p><b>${esc723(j.job_type||'職種未設定')}</b></p><p>📍 ${esc723(j.work_place||'勤務地未設定')}　💴 ${esc723(j.pay||'給与未設定')}</p>${friendly723(j)?'<span class="v723-tag green">外国人OK</span>':''}</div>
+      <span style="font-size:25px;color:#94a3b8">›</span>
+    </div>`;
+  }
+  function findHome723(){
+    const ids=['homePage','home','topPage'];
+    for(const id of ids){const el=document.getElementById(id);if(el)return el;}
+    for(const el of Array.from(document.querySelectorAll('.page,.container,main,section'))){
+      const t=(el.innerText||'').slice(0,900);
+      if((t.includes('仕事を探している方へ')||t.includes('人材派遣'))&&t.includes('お知らせ'))return el;
+    }
+    return document.querySelector('main')||document.querySelector('.container')||document.body;
+  }
+  window.v723OpenResumeForm=function(){
+    const fns=['resumeForm','resumePage','studentResume','showResumeForm','openResumeForm','resumeCreate','studentResumeForm'];
+    for(const n of fns){if(typeof window[n]==='function'){window[n]();return;}}
+    try{showPage('resumePage');return;}catch(e){}
+    alert('ログイン後、学生マイページの「履歴書作成」から入力してください。');
+  }
+  window.renderV723Home=async function(){
+    try{
+      if(!window.sb)return;
+      const root=findHome723(); if(!root)return;
+      const [d,c,n]=await Promise.all([
+        sb.from('dispatch_jobs').select('*').eq('active',true).order('created_at',{ascending:false}).limit(6),
+        sb.from('career_jobs').select('*').eq('active',true).order('created_at',{ascending:false}).limit(6),
+        sb.from('site_notices').select('*').eq('active',true).order('created_at',{ascending:false}).limit(5)
+      ]);
+      const dispatch=d.data||[], career=c.data||[], notices=n.data||[];
+      root.innerHTML=`<div class="v723-wrap">
+        <div class="v723-hero">
+          <h1>仕事探し・就職支援・履歴書作成を<br>ひとつのページで。</h1>
+          <p>留学生のアルバイト・就職活動をSOLA CAREER CENTERがサポートします。</p>
+          <div class="v723-actions">
+            <div class="v723-action" onclick="showPage&&showPage('jobsPage')"><div class="v723-icon">💼</div><div><h2>人材派遣</h2><p>アルバイト・短期求人を見る</p></div></div>
+            <div class="v723-action" onclick="showPage&&showPage('jobsPage')"><div class="v723-icon">🏢</div><div><h2>就職支援</h2><p>正社員・長期求人を見る</p></div></div>
+            <div class="v723-action" onclick="v723OpenResumeForm()"><div class="v723-icon">📝</div><div><h2>履歴書作成</h2><p>情報入力フォームへ進む</p></div></div>
+          </div>
+        </div>
+        <div class="v723-grid">
+          <div class="v723-panel"><div class="v723-head"><h2>📢 お知らせ</h2><span class="v723-more" onclick="goMyPage&&goMyPage()">すべて見る ›</span></div>${notices.map(notice723).join('')||'<div class="v723-empty">お知らせはありません</div>'}</div>
+          <div class="v723-jobs">
+            <div class="v723-panel"><div class="v723-head"><h2>💼 新着 人材派遣・アルバイト</h2><span class="v723-more" onclick="showPage&&showPage('jobsPage')">もっと見る →</span></div><div class="v723-job-list">${dispatch.slice(0,4).map(j=>job723(j,'dispatch')).join('')||'<div class="v723-empty">現在募集中の求人はありません</div>'}</div></div>
+            <div class="v723-panel"><div class="v723-head"><h2>🏢 新着 就職</h2><span class="v723-more" onclick="showPage&&showPage('jobsPage')">もっと見る →</span></div><div class="v723-job-list">${career.slice(0,4).map(j=>job723(j,'career')).join('')||'<div class="v723-empty">現在募集中の求人はありません</div>'}</div></div>
+          </div>
+        </div>
+        <div class="v723-section"><div class="v723-head"><h2>🎓 卒業生の主な就職先</h2><span class="v723-more">実績</span></div><div class="v723-row">
+          <div class="v723-chip"><span>🏨</span><div>ホテル・観光業界<small>フロント・サービス</small></div></div>
+          <div class="v723-chip"><span>🍽️</span><div>飲食・サービス業界<small>レストラン・接客</small></div></div>
+          <div class="v723-chip"><span>🏭</span><div>食品・製造業界<small>製造ライン</small></div></div>
+          <div class="v723-chip"><span>🚚</span><div>物流・倉庫業界<small>仕分け・配送</small></div></div>
+          <div class="v723-chip"><span>💻</span><div>IT・事務職<small>専門職支援</small></div></div>
+          <div class="v723-chip"><span>🤝</span><div>特定技能・介護<small>卒業後支援</small></div></div>
+        </div></div>
+        <div class="v723-section"><div class="v723-head"><h2>🌐 留学生向け便利リンク</h2><span class="v723-more">生活・手続き</span></div><div class="v723-row">
+          <div class="v723-chip" onclick="window.open('https://www.city.ginowan.lg.jp/','_blank')"><span>🏢</span><div>宜野湾市役所<small>住所・手続き</small></div></div>
+          <div class="v723-chip" onclick="window.open('https://www.moj.go.jp/isa/','_blank')"><span>🛂</span><div>出入国在留管理庁<small>在留資格・更新</small></div></div>
+          <div class="v723-chip" onclick="window.open('https://www.police.pref.okinawa.jp/','_blank')"><span>🚗</span><div>沖縄県警察<small>運転免許</small></div></div>
+          <div class="v723-chip" onclick="window.open('https://www.hellowork.mhlw.go.jp/','_blank')"><span>💼</span><div>ハローワーク<small>求人情報</small></div></div>
+          <div class="v723-chip" onclick="window.open('https://www.jasso.go.jp/','_blank')"><span>🎓</span><div>JASSO<small>留学生支援</small></div></div>
+        </div></div>
+      </div>`;
+    }catch(e){console.warn('V7.2.3 home render error',e);}
+  };
+  function findLogin723(){
+    const ids=['loginBox','loginForm','authBox','authArea','studentLogin','companyLogin','adminLogin'];
+    for(const id of ids){const el=document.getElementById(id);if(el)return el;}
+    const inputs=Array.from(document.querySelectorAll('input[type="password"],input[type="email"],input[id*="email"],input[id*="pass"]'));
+    if(inputs.length){
+      let el=inputs[0];
+      for(let i=0;i<8&&el;i++){if((el.innerText||'').includes('ログイン')||el.querySelector?.('button'))return el;el=el.parentElement;}
+      return inputs[0].closest('.card,.panel,.box,section,div')||inputs[0].parentElement;
+    }
+    return null;
+  }
+  function scrollLogin723(role){
+    setTimeout(()=>{
+      const box=findLogin723(); if(!box)return;
+      let label=role==='student'?'学生ログイン':role==='company'?'企業ログイン':'管理者ログイン';
+      let guide=document.getElementById('v723LoginGuide');
+      if(!guide){guide=document.createElement('div');guide.id='v723LoginGuide';guide.className='v723-login-guide';box.prepend(guide);}
+      guide.textContent=label+'：メールアドレスとパスワードを入力してください。';
+      box.classList.add('v723-login-focus');
+      box.scrollIntoView({behavior:'smooth',block:'center'});
+      const email=box.querySelector('input[type="email"],input[id*="email"],input[name*="email"],input');
+      if(email)setTimeout(()=>email.focus(),400);
+      setTimeout(()=>box.classList.remove('v723-login-focus'),3000);
+    },120);
+  }
+  document.addEventListener('click',function(e){
+    const el=e.target.closest('button,.card,.mini-card,.role-card,div');
+    if(!el)return;
+    const txt=(el.innerText||'').trim();
+    if(!txt||txt.length>160)return;
+    let role='';
+    if(txt.includes('学生向け')||txt.includes('学生用')||txt.includes('学生ログイン'))role='student';
+    else if(txt.includes('企業向け')||txt.includes('企業用')||txt.includes('企業ログイン'))role='company';
+    else if(txt.includes('管理者用')||txt.includes('管理者ログイン'))role='admin';
+    if(role)scrollLogin723(role);
+  },true);
+  const oldShow=window.showPage;
+  if(typeof oldShow==='function'){
+    window.showPage=function(id){
+      oldShow(id);
+      if(['homePage','home','topPage'].includes(id))setTimeout(window.renderV723Home,150);
+    }
+  }
+  window.loadHome=window.renderV723Home;
+  document.addEventListener('DOMContentLoaded',()=>{setTimeout(window.renderV723Home,500);setTimeout(window.renderV723Home,1400);setTimeout(window.renderV723Home,2600);});
+})();
+</script>
+
+</body></html>';v561Download(filename,body,'application/vnd.ms-excel;charset=utf-8')}
 async function v561UploadOptional(inputId,folder,baseName){const el=document.getElementById(inputId);if(!el?.files?.[0])return '';return await upload(inputId,folder,baseName||'file')}
 function v561JobLinks(j){let h='';if(j.attachment_url)h+=`<a target="_blank" href="${esc(j.attachment_url)}">📄 求人票</a>`;if(j.poster_url)h+=`<a target="_blank" href="${esc(j.poster_url)}">🖼️ ポスター/チラシ</a>`;if(j.external_url)h+=`<a target="_blank" href="${esc(j.external_url)}">🌐 求人URL</a>`;return h?`<div class="v561-attach">${h}</div>`:''}
 
@@ -1819,6 +1950,95 @@ button,
 /* ===== SOLA CAREER CENTER V7.2.1 ログイン導線改善 ===== */
 .v721-login-focus{outline:3px solid rgba(34,197,94,.35)!important;box-shadow:0 0 0 6px rgba(34,197,94,.12)!important;border-radius:18px!important}
 .v721-login-guide{background:#ecfdf5;border:1px solid #86efac;color:#166534;border-radius:14px;padding:10px 12px;margin:10px 0;font-weight:800;font-size:14px}
+
+
+/* ===== SOLA CAREER CENTER V7.2.2 首页・登录导线修正 ===== */
+.v722-role-card,.v722-action-card,.v722-clickable{cursor:pointer!important}
+.v722-login-focus{outline:4px solid rgba(37,99,235,.35)!important;box-shadow:0 0 0 7px rgba(37,99,235,.12)!important;border-radius:18px!important}
+.v722-login-guide{background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;border-radius:14px;padding:12px 14px;margin:12px 0;font-weight:900;font-size:15px}
+.v722-hero{
+  background:linear-gradient(135deg,#ecfdf5,#e0f2fe);
+  border:1px solid #bfdbfe;border-radius:22px;
+  padding:26px 30px;margin:18px 0;
+  box-shadow:0 10px 28px rgba(15,23,42,.08);
+}
+.v722-hero h1{font-size:32px;line-height:1.25;margin:0 0 8px;color:#0f172a}
+.v722-hero p{font-size:16px;color:#475569;font-weight:800;margin:0 0 18px}
+.v722-action-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.v722-action-card{
+  background:#fff;border:1px solid #dbeafe;border-radius:20px;padding:20px;
+  box-shadow:0 8px 20px rgba(15,23,42,.07);transition:.15s;
+  display:flex;align-items:center;gap:16px;min-height:110px;
+}
+.v722-action-card:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(15,23,42,.12)}
+.v722-action-icon{width:58px;height:58px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:30px;background:#eff6ff}
+.v722-action-card h2{font-size:22px;margin:0 0 5px;color:#0f172a}
+.v722-action-card p{font-size:14px;margin:0;color:#64748b;font-weight:800}
+.v722-main-grid{display:grid;grid-template-columns:330px 1fr;gap:18px;margin:18px 0}
+.v722-panel{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+.v722-panel-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);background:#f8fafc}
+.v722-panel-head h2{font-size:22px;margin:0;color:#0f172a}
+.v722-more{font-size:14px;font-weight:900;color:var(--blue);cursor:pointer}
+.v722-notice{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:13px 16px;border-bottom:1px solid #eef2f7;cursor:pointer}
+.v722-notice:last-child{border-bottom:none}
+.v722-notice b{font-size:15px}.v722-date{font-size:12px;color:#94a3b8;font-weight:800}
+.v722-tag{display:inline-block;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:900;background:#e0f2fe;color:#0369a1;white-space:nowrap}
+.v722-tag.red{background:#fee2e2;color:#dc2626}.v722-tag.green{background:#dcfce7;color:#15803d}.v722-tag.orange{background:#ffedd5;color:#c2410c}
+.v722-jobs{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.v722-job-list{padding:10px 16px 16px}
+.v722-job-row{display:grid;grid-template-columns:54px 1fr auto;gap:12px;align-items:center;border-bottom:1px solid #eef2f7;padding:14px 0;cursor:pointer}
+.v722-job-row:last-child{border-bottom:none}
+.v722-job-logo{width:54px;height:54px;border:1px solid var(--line);border-radius:14px;object-fit:contain;background:#fff}
+.v722-job-logo-empty{width:54px;height:54px;border-radius:14px;background:#eff6ff;border:1px solid #dbeafe;display:flex;align-items:center;justify-content:center;font-size:24px}
+.v722-job-row h3{font-size:17px;margin:0 0 4px;color:#0f172a}
+.v722-job-row p{font-size:14px;margin:2px 0;color:#64748b;font-weight:700}
+.v722-section{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);margin:18px 0;overflow:hidden}
+.v722-graduate-row,.v722-link-row{display:flex;gap:12px;overflow-x:auto;padding:16px 18px}
+.v722-grad,.v722-useful{
+  min-width:170px;border:1px solid #e5e7eb;border-radius:16px;padding:14px;background:#fff;
+  display:flex;align-items:center;gap:10px;font-weight:900;cursor:pointer
+}
+.v722-grad span,.v722-useful span{font-size:26px}
+.v722-grad small,.v722-useful small{display:block;color:#64748b;font-size:12px;font-weight:800;margin-top:3px}
+.v722-empty{padding:26px;text-align:center;color:#64748b;font-weight:900;font-size:15px}
+@media(max-width:900px){
+  .v722-action-row,.v722-main-grid,.v722-jobs{grid-template-columns:1fr}
+  .v722-hero h1{font-size:26px}
+  .v722-action-card h2{font-size:20px}
+}
+
+
+/* ===== SOLA CAREER CENTER V7.2.3 強制最終首頁修正 ===== */
+.v723-wrap{max-width:1180px;margin:0 auto;padding:14px}
+.v723-hero{background:linear-gradient(135deg,#ecfdf5,#e0f2fe);border:1px solid #bfdbfe;border-radius:22px;padding:28px;margin:18px 0;box-shadow:0 10px 28px rgba(15,23,42,.08)}
+.v723-hero h1{font-size:34px;line-height:1.25;margin:0 0 10px;color:#0f172a;font-weight:900}
+.v723-hero p{font-size:16px;color:#475569;font-weight:800;margin:0 0 20px}
+.v723-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.v723-action{background:#fff;border:1px solid #dbeafe;border-radius:20px;padding:22px;display:flex;gap:16px;align-items:center;cursor:pointer;box-shadow:0 8px 20px rgba(15,23,42,.07);transition:.15s}
+.v723-action:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(15,23,42,.12)}
+.v723-icon{width:60px;height:60px;border-radius:18px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:32px}
+.v723-action h2{font-size:23px;margin:0 0 5px;color:#0f172a}.v723-action p{font-size:14px;margin:0;color:#64748b}
+.v723-grid{display:grid;grid-template-columns:330px 1fr;gap:18px;margin:18px 0}
+.v723-panel,.v723-section{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+.v723-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);background:#f8fafc}
+.v723-head h2{font-size:23px;margin:0;color:#0f172a;font-weight:900}
+.v723-more{font-size:14px;color:var(--blue);font-weight:900;cursor:pointer}
+.v723-notice{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid #eef2f7;cursor:pointer}
+.v723-notice b{font-size:16px}.v723-date{font-size:12px;color:#94a3b8;font-weight:800}
+.v723-tag{display:inline-block;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:900;background:#e0f2fe;color:#0369a1;white-space:nowrap}
+.v723-tag.red{background:#fee2e2;color:#dc2626}.v723-tag.green{background:#dcfce7;color:#15803d}.v723-tag.orange{background:#ffedd5;color:#c2410c}
+.v723-jobs{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.v723-job-list{padding:8px 16px 16px}
+.v723-job{display:grid;grid-template-columns:54px 1fr auto;gap:12px;align-items:center;border-bottom:1px solid #eef2f7;padding:15px 0;cursor:pointer}
+.v723-logo{width:54px;height:54px;border-radius:14px;border:1px solid #dbeafe;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:24px;object-fit:contain}
+.v723-job h3{font-size:17px;margin:0 0 4px;color:#0f172a}.v723-job p{font-size:14px;margin:2px 0;color:#64748b;font-weight:700}
+.v723-row{display:flex;gap:12px;overflow-x:auto;padding:16px 18px}
+.v723-chip{min-width:170px;border:1px solid #e5e7eb;border-radius:16px;padding:14px;background:#fff;display:flex;align-items:center;gap:10px;font-weight:900;cursor:pointer}
+.v723-chip span{font-size:26px}.v723-chip small{display:block;color:#64748b;font-size:12px;font-weight:800;margin-top:3px}
+.v723-empty{padding:26px;text-align:center;color:#64748b;font-weight:900;font-size:15px}
+.v723-login-focus{outline:4px solid rgba(37,99,235,.38)!important;box-shadow:0 0 0 8px rgba(37,99,235,.13)!important;border-radius:18px!important}
+.v723-login-guide{background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;border-radius:14px;padding:12px 14px;margin:12px 0;font-weight:900;font-size:15px}
+@media(max-width:900px){.v723-actions,.v723-grid,.v723-jobs{grid-template-columns:1fr}.v723-hero h1{font-size:27px}}
 
 </style>
 </head>
