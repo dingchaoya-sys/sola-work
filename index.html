@@ -3,88 +3,50 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SOLA CAREER CENTER V7.3 正式版</title>
+<title>SOLA CAREER CENTER V7.4 正式運用版</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{
-  --green:#15bf00;--blue:#0b80e8;--dark:#0f172a;--muted:#64748b;--line:#dbe3ef;
-  --bg:#fffdf7;--card:#fff;--soft:#f1f7ff;--red:#dc2626;--orange:#f97316;
-  --shadow:0 8px 24px rgba(15,23,42,.07);
-}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--dark);font-family:system-ui,-apple-system,"Segoe UI","Noto Sans JP","Hiragino Sans",sans-serif;font-size:15px}
+:root{--green:#15bf00;--blue:#0b80e8;--dark:#0f172a;--muted:#64748b;--line:#dbe3ef;--bg:#fffdf7;--shadow:0 8px 24px rgba(15,23,42,.07);--red:#dc2626;--orange:#f97316}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--dark);font-family:system-ui,-apple-system,"Segoe UI","Noto Sans JP","Hiragino Sans",sans-serif;font-size:15px}
 header{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px}
-.logo{font-weight:1000;font-size:24px;letter-spacing:.2px;white-space:nowrap}.logo span{color:var(--green)}
+.logo{font-weight:1000;font-size:24px;letter-spacing:.2px;white-space:nowrap;cursor:pointer}.logo span{color:var(--green)}.version{font-size:11px;color:#64748b;margin-left:6px}
 .nav{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 button,.btn{border:none;background:#eaf5ff;color:#06345f;border-radius:11px;padding:10px 16px;font-weight:900;cursor:pointer;font-size:14px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
-button:hover,.btn:hover{filter:brightness(.97)}
-button.primary{background:var(--green);color:#fff}
-button.blue{background:#2563eb;color:#fff}
-button.gray{background:#f1f5f9;color:#334155}
-button.red{background:#fee2e2;color:#b91c1c}
-button.yellow{background:#fef3c7;color:#92400e}
-.wrap{max-width:1180px;margin:0 auto;padding:18px}
-.page{display:none}.page.on{display:block}
-.card{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:18px;margin:16px 0}
+button:hover,.btn:hover{filter:brightness(.97)}button.primary{background:var(--green);color:#fff}button.blue{background:#2563eb;color:#fff}button.gray{background:#f1f5f9;color:#334155}button.red{background:#fee2e2;color:#b91c1c}button.yellow{background:#fef3c7;color:#92400e}
+.wrap{max-width:1180px;margin:0 auto;padding:18px}.page{display:none}.page.on{display:block}
+.card,.panel{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}.card{padding:18px;margin:16px 0}
 .hero{background:linear-gradient(135deg,#ecfdf5,#e0f2fe);border:1px solid #bfdbfe;border-radius:24px;padding:32px;box-shadow:var(--shadow);margin:18px 0}
 .hero h1{font-size:34px;line-height:1.25;margin:0 0 10px}.hero p{font-size:16px;color:#475569;font-weight:800;margin:0 0 22px}
-.action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.action-card{background:#fff;border:1px solid #dbeafe;border-radius:20px;padding:22px;display:flex;gap:16px;align-items:center;cursor:pointer;box-shadow:0 8px 20px rgba(15,23,42,.07)}
-.action-card:hover{transform:translateY(-2px)}
-.action-icon{width:62px;height:62px;border-radius:18px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:32px}
-.action-card h2{margin:0 0 5px;font-size:23px}.action-card p{margin:0;color:var(--muted);font-weight:800}
-.home-grid{display:grid;grid-template-columns:330px 1fr;gap:18px}
-.two-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-.panel{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
-.panel-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);background:#f8fafc}
-.panel-head h2{font-size:22px;margin:0}
-.more{font-size:14px;color:var(--blue);font-weight:900;cursor:pointer}
-.notice-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid #eef2f7;cursor:pointer}
-.notice-row:last-child{border-bottom:none}.notice-row b{font-size:16px}.date{font-size:12px;color:#94a3b8;font-weight:800}
-.tag{display:inline-block;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:900;background:#e0f2fe;color:#0369a1;white-space:nowrap}
-.tag.green{background:#dcfce7;color:#15803d}.tag.red{background:#fee2e2;color:#dc2626}.tag.orange{background:#ffedd5;color:#c2410c}.tag.purple{background:#ede9fe;color:#6d28d9}
-.job-list{padding:8px 16px 16px}
-.job-row{display:grid;grid-template-columns:54px 1fr auto;gap:12px;align-items:center;border-bottom:1px solid #eef2f7;padding:15px 0;cursor:pointer}
-.job-row:last-child{border-bottom:none}
-.logo-box{width:54px;height:54px;border-radius:14px;border:1px solid #dbeafe;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:24px;object-fit:contain}
-.job-row h3{font-size:17px;margin:0 0 4px}.job-row p{font-size:14px;margin:2px 0;color:#64748b;font-weight:700}
-.scroll-row{display:flex;gap:12px;overflow-x:auto;padding:16px 18px}
-.chip{min-width:170px;border:1px solid #e5e7eb;border-radius:16px;padding:14px;background:#fff;display:flex;align-items:center;gap:10px;font-weight:900;cursor:pointer}
-.chip span{font-size:26px}.chip small{display:block;color:#64748b;font-size:12px;font-weight:800;margin-top:3px}
+.action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.action-card{background:#fff;border:1px solid #dbeafe;border-radius:20px;padding:22px;display:flex;gap:16px;align-items:center;cursor:pointer;box-shadow:0 8px 20px rgba(15,23,42,.07)}.action-card:hover{transform:translateY(-2px)}.action-icon{width:62px;height:62px;border-radius:18px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:32px}.action-card h2{margin:0 0 5px;font-size:23px}.action-card p{margin:0;color:var(--muted);font-weight:800}
+.home-grid{display:grid;grid-template-columns:330px 1fr;gap:18px}.two-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);background:#f8fafc}.panel-head h2{font-size:22px;margin:0}.more{font-size:14px;color:var(--blue);font-weight:900;cursor:pointer}
+.notice-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid #eef2f7;cursor:pointer}.notice-row b{font-size:16px}.date{font-size:12px;color:#94a3b8;font-weight:800}
+.tag{display:inline-block;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:900;background:#e0f2fe;color:#0369a1;white-space:nowrap}.tag.green{background:#dcfce7;color:#15803d}.tag.red{background:#fee2e2;color:#dc2626}.tag.orange{background:#ffedd5;color:#c2410c}.tag.purple{background:#ede9fe;color:#6d28d9}
+.job-list{padding:8px 16px 16px}.job-row{display:grid;grid-template-columns:54px 1fr auto;gap:12px;align-items:center;border-bottom:1px solid #eef2f7;padding:15px 0;cursor:pointer}.job-row:last-child{border-bottom:none}.logo-box{width:54px;height:54px;border-radius:14px;border:1px solid #dbeafe;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:24px;object-fit:contain}.job-row h3{font-size:17px;margin:0 0 4px}.job-row p{font-size:14px;margin:2px 0;color:#64748b;font-weight:700}
+.scroll-row{display:flex;gap:12px;overflow-x:auto;padding:16px 18px}.chip{min-width:170px;border:1px solid #e5e7eb;border-radius:16px;padding:14px;background:#fff;display:flex;align-items:center;gap:10px;font-weight:900;cursor:pointer}.chip span{font-size:26px}.chip small{display:block;color:#64748b;font-size:12px;font-weight:800;margin-top:3px}
 .empty{padding:26px;text-align:center;color:#64748b;font-weight:900}
-.role-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0}
-.role-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:24px;text-align:center;cursor:pointer;box-shadow:var(--shadow)}
-.role-card:hover{outline:3px solid rgba(11,128,232,.18)}
-.role-card .emoji{font-size:44px}.role-card h2{font-size:23px;margin:10px 0 8px}.role-card p{color:var(--muted);font-weight:800}
-.login-area{display:none}.login-area.on{display:block}
-.login-box{max-width:520px;margin:18px auto;background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:22px}
-.login-guide{background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;border-radius:14px;padding:12px 14px;margin:12px 0;font-weight:900}
-label{display:block;margin:12px 0 6px;font-weight:900}
-input,select,textarea{width:100%;border:1px solid #cbd5e1;border-radius:11px;padding:12px;font-size:15px;background:#fff}
-textarea{min-height:96px;resize:vertical}
+.role-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0}.role-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:24px;text-align:center;cursor:pointer;box-shadow:var(--shadow)}.role-card:hover{outline:3px solid rgba(11,128,232,.18)}.role-card .emoji{font-size:44px}.role-card h2{font-size:23px;margin:10px 0 8px}.role-card p{color:var(--muted);font-weight:800}
+.login-area{display:none}.login-area.on{display:block}.login-box{max-width:540px;margin:18px auto;background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:22px}.login-guide{background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;border-radius:14px;padding:12px 14px;margin:12px 0;font-weight:900}
+label{display:block;margin:12px 0 6px;font-weight:900}input,select,textarea{width:100%;border:1px solid #cbd5e1;border-radius:11px;padding:12px;font-size:15px;background:#fff}textarea{min-height:96px;resize:vertical}
 .tabs{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.tabs button{background:#f1f5f9;color:#0f172a}.tabs button.active{background:#dbeafe;color:#1d4ed8}
 .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px}.stat span{display:block;color:var(--muted);font-size:13px;font-weight:800}.stat b{font-size:30px;color:var(--green)}
 .table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{border-bottom:1px solid var(--line);padding:10px;text-align:left;vertical-align:top}th{background:#f8fafc}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
-.alert{border-radius:14px;padding:12px 14px;margin:12px 0;font-weight:800}.alert.info{background:#e0f2fe;color:#075985}.alert.err{background:#fee2e2;color:#991b1b}.alert.ok{background:#dcfce7;color:#166534}
-.profile{display:flex;gap:16px;align-items:flex-start}.profile-logo{width:82px;height:82px;border-radius:18px;border:1px solid var(--line);object-fit:contain;background:#fff}.profile-empty{width:82px;height:82px;border-radius:18px;background:#e0f2fe;display:flex;align-items:center;justify-content:center;font-size:36px}
-.modal{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;z-index:200;align-items:flex-start;justify-content:center;padding:28px 12px;overflow:auto}.modal.on{display:flex}
-.modal-card{background:#fff;border-radius:20px;max-width:820px;width:min(820px,96vw);padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
-.notify{background:#dc2626;color:#fff;border-radius:999px;font-size:12px;padding:2px 7px;margin-left:4px}
-.chat-float{position:fixed;right:20px;bottom:20px;width:58px;height:58px;border-radius:50%;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 12px 30px rgba(37,99,235,.35);cursor:pointer;z-index:100}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.alert{border-radius:14px;padding:12px 14px;margin:12px 0;font-weight:800}.alert.info{background:#e0f2fe;color:#075985}.alert.err{background:#fee2e2;color:#991b1b}.alert.ok{background:#dcfce7;color:#166534}
+.profile{display:flex;gap:16px;align-items:flex-start}.profile-logo{width:82px;height:82px;border-radius:18px;border:1px solid var(--line);object-fit:contain;background:#fff}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;z-index:200;align-items:flex-start;justify-content:center;padding:28px 12px;overflow:auto}.modal.on{display:flex}.modal-card{background:#fff;border-radius:20px;max-width:850px;width:min(850px,96vw);padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.notify{background:#dc2626;color:#fff;border-radius:999px;font-size:12px;padding:2px 7px;margin-left:4px}.chat-float{position:fixed;right:20px;bottom:20px;width:58px;height:58px;border-radius:50%;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 12px 30px rgba(37,99,235,.35);cursor:pointer;z-index:100}
 footer{border-top:2px solid var(--green);background:#f8fafc;text-align:center;padding:20px;color:#334155;font-size:13px;margin-top:34px}
-@media(max-width:920px){
-  header{align-items:flex-start;flex-direction:column}.action-grid,.home-grid,.two-grid,.role-grid,.kpi{grid-template-columns:1fr}.hero h1{font-size:27px}.wrap{padding:12px}
-}
+@media(max-width:920px){header{align-items:flex-start;flex-direction:column}.action-grid,.home-grid,.two-grid,.role-grid,.kpi{grid-template-columns:1fr}.hero h1{font-size:27px}.wrap{padding:12px}}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo" onclick="showHome()">SOLA <span>CAREER CENTER</span></div>
+  <div class="logo" onclick="showHome()">SOLA <span>CAREER CENTER</span><span class="version">V7.4</span></div>
   <div class="nav">
     <button onclick="showHome()">ホーム</button>
     <button onclick="showJobs('dispatch')">人材派遣</button>
     <button onclick="showJobs('career')">就職支援</button>
+    <button id="loginNavBtn" onclick="showLogin('student')">ログイン</button>
     <button id="myPageBtn" onclick="goMyPage()" style="display:none">マイページ</button>
     <button id="logoutBtn" onclick="logout()" style="display:none">ログアウト</button>
   </div>
@@ -95,6 +57,11 @@ footer{border-top:2px solid var(--green);background:#f8fafc;text-align:center;pa
 
   <section id="loginPage" class="page">
     <h1>ログイン</h1>
+    <div class="toolbar">
+      <button onclick="showLogin('student')">学生ログイン</button>
+      <button onclick="showLogin('company')">企業ログイン</button>
+      <button onclick="showLogin('admin')">管理者ログイン</button>
+    </div>
     <div class="role-grid">
       <div class="role-card" onclick="showLogin('student')"><div class="emoji">🎓</div><h2>学生向け</h2><p>求人応募・履歴書作成</p></div>
       <div class="role-card" onclick="showLogin('company')"><div class="emoji">🏢</div><h2>企業向け</h2><p>求人掲載・応募者確認</p></div>
@@ -104,8 +71,8 @@ footer{border-top:2px solid var(--green);background:#f8fafc;text-align:center;pa
       <div class="login-box" id="loginBox">
         <h2 id="loginTitle">ログイン</h2>
         <div class="login-guide" id="loginGuide">メールアドレスとパスワードを入力してください。</div>
-        <label>メールアドレス</label><input id="loginEmail" type="email">
-        <label>パスワード</label><input id="loginPassword" type="password">
+        <label>メールアドレス</label><input id="loginEmail" type="email" autocomplete="email">
+        <label>パスワード</label><input id="loginPassword" type="password" autocomplete="current-password">
         <div class="toolbar">
           <button class="primary" onclick="login()">ログイン</button>
           <button class="gray" onclick="showRegister()">新規登録</button>
@@ -134,10 +101,10 @@ footer{border-top:2px solid var(--green);background:#f8fafc;text-align:center;pa
 </footer>
 
 <script>
-const SUPABASE_URL='https://yhwdmlvzzrnvnnxapsfr.supabase.co';
+const SUPABASE_URL='https://qfhapltyetjcnoguaql.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_sHdJ25Gkpu-yEX4XhmUvxg_tVpLJA-m';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-let currentUser=null,currentRole='',currentProfile=null,selectedLoginRole='student';
+let currentUser=null,currentRole='',currentProfile=null,currentProfileId=null,selectedLoginRole='student';
 
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function v(id){return document.getElementById(id)?.value?.trim()||''}
@@ -147,128 +114,47 @@ function closeModal(){modal.classList.remove('on')}
 function setModal(h){modalContent.innerHTML=h;modal.classList.add('on')}
 function safeUrl(u){const s=String(u||'').trim();if(!s)return '';return s.startsWith('http://')||s.startsWith('https://')?s:'https://'+s}
 function logoHtml(url,cls='logo-box'){return url?`<img class="${cls}" src="${esc(url)}" onerror="this.outerHTML='<div class=&quot;${cls}&quot;>🏢</div>'">`:`<div class="${cls}">🏢</div>`}
-async function uploadFile(inputId,bucket='uploads',folder='files'){
-  const el=document.getElementById(inputId);if(!el?.files?.[0])return '';
-  const file=el.files[0];const path=`${folder}/${Date.now()}_${file.name}`;
-  const {error}=await sb.storage.from(bucket).upload(path,file,{upsert:true});
-  if(error)throw error;
-  return sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;
-}
+async function uploadFile(inputId,bucket='uploads',folder='files'){const el=document.getElementById(inputId);if(!el?.files?.[0])return '';const file=el.files[0];const path=`${folder}/${Date.now()}_${file.name}`;const {error}=await sb.storage.from(bucket).upload(path,file,{upsert:true});if(error)throw error;return sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;}
 
-/* Auth */
-function showLogin(role){
-  selectedLoginRole=role;
-  page('loginPage');
-  loginArea.classList.add('on');
-  const label=role==='student'?'学生ログイン':role==='company'?'企業ログイン':'管理者ログイン';
-  loginTitle.textContent=label;
-  loginGuide.textContent=label+'：メールアドレスとパスワードを入力してください。';
-  setTimeout(()=>{loginBox.scrollIntoView({behavior:'smooth',block:'center'});loginEmail.focus();},120);
-}
+/* Auth + Profile */
+function showLogin(role){selectedLoginRole=role;page('loginPage');loginArea.classList.add('on');const label=role==='student'?'学生ログイン':role==='company'?'企業ログイン':'管理者ログイン';loginTitle.textContent=label;loginGuide.textContent=label+'：メールアドレスとパスワードを入力してください。';setTimeout(()=>{loginBox.scrollIntoView({behavior:'smooth',block:'center'});loginEmail.focus();},120);}
 function showRegister(){registerBox.style.display=registerBox.style.display==='none'?'block':'none'}
-async function login(){
-  const email=v('loginEmail'),password=v('loginPassword');
-  if(!email||!password)return alert('メールアドレスとパスワードを入力してください。');
-  const {data,error}=await sb.auth.signInWithPassword({email,password});
-  if(error)return alert('ログインエラー：'+error.message);
-  currentUser=data.user;
-  await loadProfile(selectedLoginRole);
-  goMyPage();
-}
-async function register(){
-  const email=v('loginEmail'),password=v('loginPassword'),name=v('registerName');
-  if(!email||!password||!name)return alert('メール・パスワード・名前を入力してください。');
-  const {data,error}=await sb.auth.signUp({email,password});
-  if(error)return alert('登録エラー：'+error.message);
-  currentUser=data.user;
-  if(selectedLoginRole==='student')await sb.from('students').insert({user_id:data.user?.id,email,name,active:true});
-  if(selectedLoginRole==='company')await sb.from('companies').insert({user_id:data.user?.id,email,company_name:name,approved:true,active:true,status:'approved'});
-  alert('登録しました。ログインしてください。');
-}
-async function loadProfile(fallbackRole='student'){
-  const email=currentUser?.email||'';
-  const admin=await sb.from('users').select('*').eq('email',email).eq('role','admin').maybeSingle();
-  if(admin.data){currentRole='admin';currentProfile=admin.data;return updateHeader();}
-  if(fallbackRole==='company'){
-    const c=await sb.from('companies').select('*').eq('email',email).maybeSingle();
-    if(c.data){currentRole='company';currentProfile=c.data;return updateHeader();}
-  }
-  const s=await sb.from('students').select('*').eq('email',email).maybeSingle();
-  if(s.data){currentRole='student';currentProfile=s.data;return updateHeader();}
-  const c=await sb.from('companies').select('*').eq('email',email).maybeSingle();
-  if(c.data){currentRole='company';currentProfile=c.data;return updateHeader();}
-  currentRole=fallbackRole;currentProfile={email,name:email};updateHeader();
-}
-function updateHeader(){
-  myPageBtn.style.display='inline-flex';logoutBtn.style.display='inline-flex';
-  myPageBtn.textContent=currentRole==='admin'?'管理者マイページ':currentRole==='company'?'企業マイページ':'学生マイページ';
-}
-async function logout(){await sb.auth.signOut();currentUser=null;currentRole='';currentProfile=null;myPageBtn.style.display='none';logoutBtn.style.display='none';showHome();}
+async function login(){const email=v('loginEmail'),password=v('loginPassword');if(!email||!password)return alert('メールアドレスとパスワードを入力してください。');const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)return alert('ログインエラー：'+error.message);currentUser=data.user;await loadProfile(selectedLoginRole);goMyPage();}
+async function register(){const email=v('loginEmail'),password=v('loginPassword'),name=v('registerName');if(!email||!password||!name)return alert('メール・パスワード・名前を入力してください。');const {data,error}=await sb.auth.signUp({email,password});if(error)return alert('登録エラー：'+error.message);currentUser=data.user;await ensureProfile(selectedLoginRole,name,email);alert('登録しました。ログインできます。');await loadProfile(selectedLoginRole);goMyPage();}
+async function ensureProfile(role,name,email){const user_id=currentUser?.id;const p={user_id,email,role,name,active:true};await sb.from('profiles').upsert(p,{onConflict:'email'});if(role==='student')await sb.from('students').upsert({profile_id:user_id,email,name,active:true},{onConflict:'email'});if(role==='company')await sb.from('companies').upsert({profile_id:user_id,email,company_name:name,approved:true,status:'approved',active:true},{onConflict:'email'});}
+async function loadProfile(fallbackRole='student'){const email=currentUser?.email||'';let r=await sb.from('profiles').select('*').eq('email',email).maybeSingle();if(!r.data){await ensureProfile(fallbackRole,email,email);r=await sb.from('profiles').select('*').eq('email',email).maybeSingle();}currentProfileId=r.data?.id||currentUser.id;currentRole=r.data?.role||fallbackRole;if(currentRole==='admin')currentProfile=r.data;else if(currentRole==='company'){const c=await sb.from('companies').select('*').eq('email',email).maybeSingle();currentProfile=c.data||r.data;}else{const s=await sb.from('students').select('*').eq('email',email).maybeSingle();currentProfile=s.data||r.data;}updateHeader();}
+function updateHeader(){loginNavBtn.style.display='none';myPageBtn.style.display='inline-flex';logoutBtn.style.display='inline-flex';myPageBtn.textContent=currentRole==='admin'?'管理者マイページ':currentRole==='company'?'企業マイページ':'学生マイページ';refreshUnread();}
+async function logout(){await sb.auth.signOut();currentUser=null;currentRole='';currentProfile=null;currentProfileId=null;loginNavBtn.style.display='inline-flex';myPageBtn.style.display='none';logoutBtn.style.display='none';showHome();}
 function goMyPage(){if(!currentUser)return showLogin('student');if(currentRole==='admin')adminDashboard();else if(currentRole==='company')companyDashboard();else studentDashboard();}
 
 /* Home */
-async function loadHome(){
-  const [dispatch,career,notices]=await Promise.all([
-    sb.from('jobs').select('*,companies(company_name,logo_url)').eq('active',true).eq('job_category','dispatch').order('created_at',{ascending:false}).limit(4),
-    sb.from('jobs').select('*,companies(company_name,logo_url)').eq('active',true).eq('job_category','career').order('created_at',{ascending:false}).limit(4),
-    sb.from('notifications').select('*').or('target_role.eq.all,target_role.is.null').order('created_at',{ascending:false}).limit(5)
-  ]);
-  homePage.innerHTML=`<div class="hero">
-    <h1>仕事探し・就職支援・履歴書作成を<br>ひとつのページで。</h1>
-    <p>留学生のアルバイト・就職活動をSOLA CAREER CENTERがサポートします。</p>
-    <div class="action-grid">
-      <div class="action-card" onclick="showJobs('dispatch')"><div class="action-icon">💼</div><div><h2>人材派遣</h2><p>アルバイト・短期求人を見る</p></div></div>
-      <div class="action-card" onclick="showJobs('career')"><div class="action-icon">🏢</div><div><h2>就職支援</h2><p>正社員・長期求人を見る</p></div></div>
-      <div class="action-card" onclick="openResumeForm()"><div class="action-icon">📝</div><div><h2>履歴書作成</h2><p>情報入力フォームへ進む</p></div></div>
-    </div>
-  </div>
-  <div class="home-grid">
-    <div class="panel"><div class="panel-head"><h2>📢 お知らせ</h2><span class="more" onclick="showLogin('student')">すべて見る ›</span></div>${(notices.data||[]).map(n=>noticeRow(n)).join('')||'<div class="empty">お知らせはありません</div>'}</div>
-    <div class="two-grid">
-      <div class="panel"><div class="panel-head"><h2>💼 新着 人材派遣・アルバイト</h2><span class="more" onclick="showJobs('dispatch')">もっと見る →</span></div><div class="job-list">${(dispatch.data||[]).map(j=>jobRow(j)).join('')||'<div class="empty">現在募集中の求人はありません</div>'}</div></div>
-      <div class="panel"><div class="panel-head"><h2>🏢 新着 就職</h2><span class="more" onclick="showJobs('career')">もっと見る →</span></div><div class="job-list">${(career.data||[]).map(j=>jobRow(j)).join('')||'<div class="empty">現在募集中の求人はありません</div>'}</div></div>
-    </div>
-  </div>
-  <div class="panel card"><div class="panel-head"><h2>🎓 卒業生の主な就職先</h2><span class="more">実績</span></div><div class="scroll-row">
-    ${chip('🏨','ホテル・観光業界','フロント・サービス')}${chip('🍽️','飲食・サービス業界','レストラン・接客')}${chip('🏭','食品・製造業界','製造ライン')}${chip('🚚','物流・倉庫業界','仕分け・配送')}${chip('💻','IT・事務職','専門職支援')}${chip('🤝','特定技能・介護','卒業後支援')}
-  </div></div>
-  <div class="panel card"><div class="panel-head"><h2>🌐 留学生向け便利リンク</h2><span class="more">生活・手続き</span></div><div class="scroll-row">
-    ${linkChip('🏢','宜野湾市役所','住所・手続き','https://www.city.ginowan.lg.jp/')}
-    ${linkChip('🛂','出入国在留管理庁','在留資格・更新','https://www.moj.go.jp/isa/')}
-    ${linkChip('🚗','沖縄県警察','運転免許','https://www.police.pref.okinawa.jp/')}
-    ${linkChip('💼','ハローワーク','求人情報','https://www.hellowork.mhlw.go.jp/')}
-    ${linkChip('🎓','JASSO','留学生支援','https://www.jasso.go.jp/')}
-  </div></div>`;
-}
-function chip(e,t,s){return `<div class="chip"><span>${e}</span><div>${t}<small>${s}</small></div></div>`}
+async function loadHome(){const [dispatch,career,notices]=await Promise.all([sb.from('jobs').select('*,companies(company_name,logo_url)').eq('active',true).eq('job_category','dispatch').order('created_at',{ascending:false}).limit(4),sb.from('jobs').select('*,companies(company_name,logo_url)').eq('active',true).eq('job_category','career').order('created_at',{ascending:false}).limit(4),sb.from('notifications').select('*').eq('active',true).or('target_role.eq.all,target_role.is.null').order('created_at',{ascending:false}).limit(5)]);homePage.innerHTML=`<div class="hero"><h1>仕事探し・就職支援・履歴書作成を<br>ひとつのページで。</h1><p>留学生のアルバイト・就職活動をSOLA CAREER CENTERがサポートします。</p><div class="action-grid"><div class="action-card" onclick="showJobs('dispatch')"><div class="action-icon">💼</div><div><h2>人材派遣</h2><p>アルバイト・短期求人を見る</p></div></div><div class="action-card" onclick="showJobs('career')"><div class="action-icon">🏢</div><div><h2>就職支援</h2><p>正社員・長期求人を見る</p></div></div><div class="action-card" onclick="openResumeForm()"><div class="action-icon">📝</div><div><h2>履歴書作成</h2><p>情報入力フォームへ進む</p></div></div></div></div><div class="home-grid"><div class="panel"><div class="panel-head"><h2>📢 お知らせ</h2><span class="more" onclick="showLogin('student')">すべて見る ›</span></div>${(notices.data||[]).map(n=>noticeRow(n)).join('')||'<div class="empty">お知らせはありません</div>'}</div><div class="two-grid"><div class="panel"><div class="panel-head"><h2>💼 新着 人材派遣・アルバイト</h2><span class="more" onclick="showJobs('dispatch')">もっと見る →</span></div><div class="job-list">${(dispatch.data||[]).map(j=>jobRow(j)).join('')||'<div class="empty">現在募集中の求人はありません</div>'}</div></div><div class="panel"><div class="panel-head"><h2>🏢 新着 就職</h2><span class="more" onclick="showJobs('career')">もっと見る →</span></div><div class="job-list">${(career.data||[]).map(j=>jobRow(j)).join('')||'<div class="empty">現在募集中の求人はありません</div>'}</div></div></div></div><div class="panel card"><div class="panel-head"><h2>🎓 卒業生の主な就職先</h2><span class="more">実績</span></div><div class="scroll-row">${chip('🏨','ホテル・観光業界','フロント・サービス')}${chip('🍽️','飲食・サービス業界','レストラン・接客')}${chip('🏭','食品・製造業界','製造ライン')}${chip('🚚','物流・倉庫業界','仕分け・配送')}${chip('💻','IT・事務職','専門職支援')}${chip('🤝','特定技能・介護','卒業後支援')}</div></div><div class="panel card"><div class="panel-head"><h2>🌐 留学生向け便利リンク</h2><span class="more">生活・手続き</span></div><div class="scroll-row">${linkChip('🏢','宜野湾市役所','住所・手続き','https://www.city.ginowan.lg.jp/')}${linkChip('🛂','出入国在留管理庁','在留資格・更新','https://www.moj.go.jp/isa/')}${linkChip('🚗','沖縄県警察','運転免許','https://www.police.pref.okinawa.jp/')}${linkChip('💼','ハローワーク','求人情報','https://www.hellowork.mhlw.go.jp/')}${linkChip('🎓','JASSO','留学生支援','https://www.jasso.go.jp/')}</div></div>`;}
+function chip(e,t,s){return `<div class="chip" onclick="openGraduateIndustry('${esc(t)}','${esc(s)}','${e}')"><span>${e}</span><div>${t}<small>${s}</small></div></div>`}
 function linkChip(e,t,s,u){return `<div class="chip" onclick="window.open('${u}','_blank')"><span>${e}</span><div>${t}<small>${s}</small></div></div>`}
 function noticeRow(n){return `<div class="notice-row" onclick="openNotice('${n.id}')"><span class="tag ${n.category==='重要'?'red':'green'}">${esc(n.category||'案内')}</span><b>${esc(n.title||'')}</b><span class="date">${esc((n.created_at||'').slice(0,10))}</span></div>`}
-function jobRow(j){return `<div class="job-row" onclick="openJob('${j.id}')">${logoHtml(j.companies?.logo_url)}<div><h3>${esc(j.companies?.company_name||j.company_name||'企業名未設定')}</h3><p><b>${esc(j.title||'職種未設定')}</b></p><p>📍 ${esc(j.work_place||'勤務地未設定')}　💴 ${esc(j.salary||'給与未設定')}</p>${j.foreigner_ok?'<span class="tag green">外国人OK</span>':''}</div><span style="font-size:25px;color:#94a3b8">›</span></div>`}
-async function openNotice(id){const r=await sb.from('notifications').select('*').eq('id',id).maybeSingle();const n=r.data;if(!n)return;setModal(`<button class="gray" onclick="closeModal()">閉じる</button><h2>${esc(n.title)}</h2><p style="white-space:pre-line">${esc(n.message||'')}</p>`)}
+function jobRow(j){return `<div class="job-row" onclick="openJob('${j.id}')">${logoHtml(j.companies?.logo_url||j.company_logo_url)}<div><h3>${esc(j.companies?.company_name||j.company_name||'企業名未設定')}</h3><p><b>${esc(j.title||'職種未設定')}</b></p><p>📍 ${esc(j.work_place||'勤務地未設定')}　💴 ${esc(j.salary||'給与未設定')}</p>${j.foreigner_ok?'<span class="tag green">外国人OK</span>':''}</div><span style="font-size:25px;color:#94a3b8">›</span></div>`}
+async function openNotice(id){const r=await sb.from('notifications').select('*').eq('id',id).maybeSingle();const n=r.data;if(!n)return;setModal(`<button class="gray" onclick="closeModal()">閉じる</button><h2>${esc(n.title)}</h2><p style="white-space:pre-line">${esc(n.message||'')}</p><button onclick="markNoticeRead('${n.id}')">既読にする</button>`)}
+async function markNoticeRead(id){if(!currentUser)return;await sb.from('notification_reads').upsert({notification_id:id,profile_id:currentProfileId,read_at:new Date().toISOString()});refreshUnread();closeModal();}
 async function openJob(id){const r=await sb.from('jobs').select('*,companies(company_name,logo_url,company_intro,website)').eq('id',id).maybeSingle();const j=r.data;if(!j)return;setModal(`${jobDetailHtml(j)}${currentRole==='student'?`<button class="primary" onclick="applyJob('${j.id}')">応募する</button>`:''}`)}
-function jobDetailHtml(j){return `<button class="gray" onclick="closeModal()">閉じる</button><div class="profile">${logoHtml(j.companies?.logo_url,'profile-logo')}<div><h2>${esc(j.companies?.company_name||'企業名未設定')}</h2><p>${esc(j.companies?.company_intro||'')}</p></div></div><h3>${esc(j.title)}</h3>${j.foreigner_ok?'<span class="tag green">外国人OK</span>':''}${j.japanese_level?`<span class="tag purple">${esc(j.japanese_level)}</span>`:''}<table><tr><th>勤務地</th><td>${esc(j.work_place||'')}</td></tr><tr><th>給与</th><td>${esc(j.salary||'')}</td></tr><tr><th>勤務時間</th><td>${esc(j.work_time||'')}</td></tr><tr><th>仕事内容</th><td style="white-space:pre-line">${esc(j.description||'')}</td></tr><tr><th>応募条件</th><td style="white-space:pre-line">${esc(j.requirements||'')}</td></tr></table>${j.external_url?`<p><a class="btn" target="_blank" href="${esc(safeUrl(j.external_url))}">求人URLを開く</a></p>`:''}`}
+function jobDetailHtml(j){return `<button class="gray" onclick="closeModal()">閉じる</button><div class="profile">${logoHtml(j.companies?.logo_url||j.company_logo_url,'profile-logo')}<div><h2>${esc(j.companies?.company_name||j.company_name||'企業名未設定')}</h2><p>${esc(j.companies?.company_intro||'')}</p></div></div><h3>${esc(j.title)}</h3>${j.foreigner_ok?'<span class="tag green">外国人OK</span>':''}${j.japanese_level?`<span class="tag purple">${esc(j.japanese_level)}</span>`:''}<table><tr><th>勤務地</th><td>${esc(j.work_place||'')}</td></tr><tr><th>給与</th><td>${esc(j.salary||'')}</td></tr><tr><th>勤務時間</th><td>${esc(j.work_time||'')}</td></tr><tr><th>仕事内容</th><td style="white-space:pre-line">${esc(j.description||'')}</td></tr><tr><th>応募条件</th><td style="white-space:pre-line">${esc(j.requirements||'')}</td></tr></table>${j.external_url?`<p><a class="btn" target="_blank" href="${esc(safeUrl(j.external_url))}">求人URLを開く</a></p>`:''}`}
+function openGraduateIndustry(title,subtitle,emoji){const guide={'ホテル・観光業界':'ホテルのフロント、客室清掃、レストランサービス、観光施設などで留学生が活躍しています。','飲食・サービス業界':'レストラン、カフェ、接客、キッチン補助など、未経験から始めやすい求人があります。','食品・製造業界':'食品工場、製造ライン、包装、検品など、長期雇用につながる求人があります。','物流・倉庫業界':'仕分け、配送補助、倉庫管理など、県内企業での実績があります。','IT・事務職':'情報処理、データ入力、事務補助、専門職を目指す学生向けの支援があります。','特定技能・介護':'卒業後の在留資格や特定技能につながる就職支援を行います。'};setModal(`<button class="gray" onclick="closeModal()">閉じる</button><h2>${emoji} ${esc(title)}</h2><p style="font-weight:800;color:var(--muted)">${esc(subtitle)}</p><div class="alert info">${esc(guide[title]||'卒業生の就職実績がある分野です。')}</div><div class="toolbar"><button onclick="closeModal();showJobs('career')">就職求人を見る</button><button onclick="closeModal();showJobs('dispatch')">アルバイト求人を見る</button><button class="gray" onclick="closeModal();showLogin('student')">学生ログイン</button></div>`)}
 
 /* Jobs */
-async function showJobs(kind=''){
-  page('jobsPage');
-  const q=kind?sb.from('jobs').select('*,companies(company_name,logo_url)').eq('active',true).eq('job_category',kind).order('created_at',{ascending:false}):sb.from('jobs').select('*,companies(company_name,logo_url)').eq('active',true).order('created_at',{ascending:false});
-  const r=await q;
-  jobsPage.innerHTML=`<h1>${kind==='career'?'就職支援求人':kind==='dispatch'?'人材派遣・アルバイト求人':'求人一覧'}</h1><div class="toolbar"><button onclick="showJobs('dispatch')">人材派遣・アルバイト</button><button onclick="showJobs('career')">就職支援</button><button onclick="showJobs('')">すべて</button></div><div class="panel"><div class="job-list">${(r.data||[]).map(j=>jobRow(j)).join('')||'<div class="empty">求人はありません</div>'}</div></div>`;
-}
+async function showJobs(kind=''){page('jobsPage');const q=kind?sb.from('jobs').select('*,companies(company_name,logo_url)').eq('active',true).eq('job_category',kind).order('created_at',{ascending:false}):sb.from('jobs').select('*,companies(company_name,logo_url)').eq('active',true).order('created_at',{ascending:false});const r=await q;jobsPage.innerHTML=`<h1>${kind==='career'?'就職支援求人':kind==='dispatch'?'人材派遣・アルバイト求人':'求人一覧'}</h1><div class="toolbar"><button onclick="showJobs('dispatch')">人材派遣・アルバイト</button><button onclick="showJobs('career')">就職支援</button><button onclick="showJobs('')">すべて</button></div><div class="panel"><div class="job-list">${(r.data||[]).map(j=>jobRow(j)).join('')||'<div class="empty">求人はありません</div>'}</div></div>`;}
 
 /* Student */
-function studentDashboard(){page('studentPage');studentPage.innerHTML=`<h1>学生マイページ</h1><p>${esc(currentProfile?.email||'')}</p><div class="tabs"><button onclick="studentHome()">ダッシュボード</button><button onclick="openResumeForm()">履歴書作成</button><button onclick="showJobs()">求人検索</button><button onclick="studentApplications()">応募履歴</button><button onclick="studentInterviews()">面接予定</button><button onclick="studentNotifications()">通知</button></div><div id="studentContent"></div>`;studentHome()}
-function studentHome(){studentContent.innerHTML=`<div class="kpi"><div class="stat"><span>応募中</span><b>0</b></div><div class="stat"><span>面接予定</span><b>0</b></div></div>`}
+function studentDashboard(){page('studentPage');studentPage.innerHTML=`<h1>学生マイページ</h1><p>${esc(currentProfile?.email||'')}</p><div class="tabs"><button onclick="studentHome()">ダッシュボード</button><button onclick="openResumeForm()">履歴書作成</button><button onclick="showJobs()">求人検索</button><button onclick="studentApplications()">応募履歴</button><button onclick="studentInterviews()">面接予定</button><button onclick="studentNotifications()">通知 <span id="stUnread"></span></button></div><div id="studentContent"></div>`;studentHome()}
+async function studentHome(){const [a,i]=await Promise.all([sb.from('applications').select('id').eq('student_id',currentProfile.id),sb.from('interviews').select('id').eq('student_id',currentProfile.id)]);studentContent.innerHTML=`<div class="kpi"><div class="stat"><span>応募中</span><b>${a.data?.length||0}</b></div><div class="stat"><span>面接予定</span><b>${i.data?.length||0}</b></div></div>`}
 function openResumeForm(){if(!currentUser)return showLogin('student');page('studentPage');if(!document.getElementById('studentContent'))studentDashboard();studentContent.innerHTML=`<h2>履歴書作成用 情報入力フォーム</h2><label>氏名</label><input id="resumeName" value="${esc(currentProfile?.name||'')}"><label>電話番号</label><input id="resumePhone" value="${esc(currentProfile?.phone||'')}"><label>国籍</label><input id="resumeNationality" value="${esc(currentProfile?.nationality||'')}"><label>日本語レベル</label><input id="resumeJlpt" value="${esc(currentProfile?.japanese_level||currentProfile?.jlpt||'')}"><label>履歴書PDF</label><input id="resumeFile" type="file"><button class="primary" onclick="saveResume()">保存する</button>`}
 async function saveResume(){try{let resume_url=currentProfile.resume_url||'';if(document.getElementById('resumeFile')?.files?.[0])resume_url=await uploadFile('resumeFile','resumes','resume');const p={name:v('resumeName'),phone:v('resumePhone'),nationality:v('resumeNationality'),japanese_level:v('resumeJlpt'),jlpt:v('resumeJlpt'),resume_url};await sb.from('students').update(p).eq('id',currentProfile.id);Object.assign(currentProfile,p);alert('保存しました。')}catch(e){alert('保存エラー：'+e.message)}}
-async function applyJob(job_id){if(!currentUser)return showLogin('student');try{const job=await sb.from('jobs').select('*,companies(email,company_name)').eq('id',job_id).maybeSingle();const j=job.data;const ex=await sb.from('applications').select('id').eq('job_id',job_id).eq('student_id',currentProfile.id).maybeSingle();if(ex.data)return alert('応募済みです。');await sb.from('applications').insert({job_id,student_id:currentProfile.id,status:'企業確認中',resume_url:currentProfile.resume_url||''});await notify(j.companies?.email,'企業','新しい応募が届きました',`${currentProfile.name||currentProfile.email} さんが「${j.title}」に応募しました。`);await notify(null,'admin','新しい応募',`${currentProfile.name||currentProfile.email} さんが ${j.title} に応募しました。`);alert('応募しました。企業へ通知しました。');closeModal();}catch(e){alert('応募エラー：'+e.message)}}
+async function applyJob(job_id){if(!currentUser)return showLogin('student');try{const job=await sb.from('jobs').select('*,companies(email,company_name)').eq('id',job_id).maybeSingle();const j=job.data;const ex=await sb.from('applications').select('id').eq('job_id',job_id).eq('student_id',currentProfile.id).maybeSingle();if(ex.data)return alert('応募済みです。');await sb.from('applications').insert({job_id,student_id:currentProfile.id,status:'企業確認中',route:'企業へ直接送信',resume_url:currentProfile.resume_url||''});await notify(j.companies?.email,'company','新しい応募が届きました',`${currentProfile.name||currentProfile.email} さんが「${j.title}」に応募しました。`);await notify(null,'admin','新しい応募',`${currentProfile.name||currentProfile.email} さんが ${j.title} に応募しました。`);alert('応募しました。企業へ通知しました。');closeModal();}catch(e){alert('応募エラー：'+e.message)}}
 async function studentApplications(){const r=await sb.from('applications').select('*,jobs(title,job_category,companies(company_name))').eq('student_id',currentProfile.id).order('created_at',{ascending:false});studentContent.innerHTML=`<h2>応募履歴</h2><div class="table-wrap"><table><tr><th>企業</th><th>求人</th><th>状態</th><th>日時</th></tr>${(r.data||[]).map(a=>`<tr><td>${esc(a.jobs?.companies?.company_name)}</td><td>${esc(a.jobs?.title)}</td><td>${esc(a.status)}</td><td>${esc((a.created_at||'').slice(0,16).replace('T',' '))}</td></tr>`).join('')}</table></div>`}
 async function studentInterviews(){const r=await sb.from('interviews').select('*,applications(jobs(title,companies(company_name)))').eq('student_id',currentProfile.id).order('interview_datetime',{ascending:true});studentContent.innerHTML=`<h2>面接予定</h2>${(r.data||[]).map(i=>`<div class="card"><h3>${esc(i.applications?.jobs?.companies?.company_name)} / ${esc(i.applications?.jobs?.title)}</h3><p>日時：${esc((i.interview_datetime||'').replace('T',' ').slice(0,16))}</p><p>方法：${esc(i.method||'')}</p><p>場所：${esc(i.location||'')}</p>${i.meeting_url?`<p><a class="btn" target="_blank" href="${esc(i.meeting_url)}">オンラインURL</a></p>`:''}<p>${esc(i.message||'')}</p><p>状態：${esc(i.status||'')}</p><button onclick="studentConfirmInterview('${i.id}','参加')">参加する</button><button class="yellow" onclick="studentConfirmInterview('${i.id}','日程変更希望')">日程変更希望</button><button class="red" onclick="studentConfirmInterview('${i.id}','不参加')">不参加</button></div>`).join('')||'<div class="card">面接予定はありません。</div>'}`}
 async function studentConfirmInterview(id,response){await sb.from('interviews').update({student_response:response,student_confirmed:response==='参加',status:response==='参加'?'面接確定':response}).eq('id',id);alert('回答しました。');studentInterviews();}
 async function studentNotifications(){await showNotifications('student',currentProfile.email,'studentContent')}
 
 /* Company */
-function companyDashboard(){page('companyPage');companyPage.innerHTML=`<h1>企業マイページ</h1><p>${esc(currentProfile?.email||'')}</p><div class="tabs"><button onclick="companyHome()">ダッシュボード</button><button onclick="companyProfile()">企業情報</button><button onclick="companyJobs()">自社求人</button><button onclick="companyJobForm()">求人追加</button><button onclick="companyApplications()">応募学生</button><button onclick="companyInterviews()">面接管理</button><button onclick="companyNotifications()">通知</button></div><div id="companyContent"></div>`;companyHome()}
+function companyDashboard(){page('companyPage');companyPage.innerHTML=`<h1>企業マイページ</h1><p>${esc(currentProfile?.email||'')}</p><div class="tabs"><button onclick="companyHome()">ダッシュボード</button><button onclick="companyProfile()">企業情報</button><button onclick="companyJobs()">自社求人</button><button onclick="companyJobForm()">求人追加</button><button onclick="companyApplications()">応募学生</button><button onclick="companyInterviews()">面接管理</button><button onclick="companyNotifications()">通知 <span id="coUnread"></span></button><button onclick="adminPasswordResetSelf()">パスワード変更</button></div><div id="companyContent"></div>`;companyHome()}
 async function companyHome(){const jobs=await sb.from('jobs').select('id').eq('company_id',currentProfile.id);const apps=await loadCompanyApps();companyContent.innerHTML=`<div class="kpi"><div class="stat"><span>自社求人</span><b>${jobs.data?.length||0}</b></div><div class="stat"><span>応募者</span><b>${apps.length}</b></div></div>`}
 function companyProfile(){companyContent.innerHTML=`<h2>企業情報</h2><div class="profile">${logoHtml(currentProfile.logo_url,'profile-logo')}<div><h3>${esc(currentProfile.company_name||'企業名未登録')}</h3><p>${esc(currentProfile.company_intro||'')}</p></div></div><label>企業名</label><input id="cpName" value="${esc(currentProfile.company_name||'')}"><label>企業ロゴ</label><input id="cpLogo" type="file"><label>企業ホームページ</label><input id="cpWebsite" value="${esc(currentProfile.website||'')}"><label>企業紹介</label><textarea id="cpIntro">${esc(currentProfile.company_intro||'')}</textarea><button class="primary" onclick="saveCompanyProfile()">保存する</button>`}
 async function saveCompanyProfile(){try{let logo_url=currentProfile.logo_url||'';if(document.getElementById('cpLogo')?.files?.[0])logo_url=await uploadFile('cpLogo','company-logos','logo');const p={company_name:v('cpName'),logo_url,website:v('cpWebsite'),company_intro:v('cpIntro')};await sb.from('companies').update(p).eq('id',currentProfile.id);Object.assign(currentProfile,p);await sb.from('jobs').update({company_name:p.company_name,company_logo_url:p.logo_url}).eq('company_id',currentProfile.id);alert('保存しました。');companyProfile();}catch(e){alert('保存エラー：'+e.message)}}
@@ -277,34 +163,44 @@ async function companyJobForm(id=''){let j={job_category:'dispatch',title:'',des
 async function saveCompanyJob(id=''){try{if(!currentProfile.company_name)return alert('先に企業情報で企業名を登録してください。');const q=Number(v('jobQuota')||1);const p={company_id:currentProfile.id,company_name:currentProfile.company_name,company_logo_url:currentProfile.logo_url||'',job_category:v('jobCategory'),title:v('jobTitle'),description:v('jobDesc'),work_place:v('jobPlace'),salary:v('jobSalary'),work_time:v('jobTime'),requirements:v('jobReq'),foreigner_ok:v('jobForeign')==='true',japanese_level:v('jobJapanese'),quota:q,remaining_quota:q,active:v('jobActive')==='true',external_url:v('jobUrl')};const r=id?await sb.from('jobs').update(p).eq('id',id):await sb.from('jobs').insert(p);if(r.error)throw r.error;alert('保存しました。');companyJobs();}catch(e){alert('保存エラー：'+e.message)}}
 async function deleteJob(id){if(!confirm('削除しますか？'))return;await sb.from('jobs').delete().eq('id',id);companyJobs();}
 async function loadCompanyApps(){const r=await sb.from('applications').select('*,students(name,email,nationality,japanese_level,resume_url),jobs(title,company_id)').eq('jobs.company_id',currentProfile.id).order('created_at',{ascending:false});return r.data||[]}
-async function companyApplications(){const rows=await loadCompanyApps();companyContent.innerHTML=`<h2>応募学生</h2><div class="table-wrap"><table><tr><th>学生</th><th>求人</th><th>状態</th><th>履歴書</th><th>操作</th></tr>${rows.map(a=>`<tr><td><b>${esc(a.students?.name)}</b><br>${esc(a.students?.email)}</td><td>${esc(a.jobs?.title)}</td><td>${esc(a.status)}</td><td>${a.students?.resume_url?`<a target="_blank" href="${esc(a.students.resume_url)}">履歴書</a>`:'未登録'}</td><td><button onclick="interviewForm('${a.id}')">面接案内</button><button onclick="setResult('${a.id}','内定')">内定</button><button class="red" onclick="setResult('${a.id}','不採用')">不採用</button></td></tr>`).join('')}</table></div>`}
+async function companyApplications(){const rows=await loadCompanyApps();companyContent.innerHTML=`<h2>応募学生</h2><div class="table-wrap"><table><tr><th>学生</th><th>求人</th><th>状態</th><th>履歴書</th><th>操作</th></tr>${rows.map(a=>`<tr><td><b>${esc(a.students?.name)}</b><br>${esc(a.students?.email)}</td><td>${esc(a.jobs?.title)}</td><td>${esc(a.status)}</td><td>${a.students?.resume_url?`<a target="_blank" href="${esc(a.students.resume_url)}">履歴書</a>`:'未登録'}</td><td><button onclick="interviewForm('${a.id}')">面接案内</button><button onclick="setResult('${a.id}','内定')">内定</button><button class="yellow" onclick="setResult('${a.id}','保留')">保留</button><button class="red" onclick="setResult('${a.id}','不採用')">不採用</button><button onclick="companyMessageStudent('${a.students?.email}')">連絡</button></td></tr>`).join('')}</table></div>`}
 function interviewForm(appId){companyContent.innerHTML=`<h2>面接案内</h2><label>面接日時</label><input id="ivTime" type="datetime-local"><label>方法</label><select id="ivMethod"><option>対面</option><option>オンライン</option></select><label>場所</label><input id="ivLocation"><label>Zoom / Google Meet URL</label><input id="ivUrl"><label>メッセージ</label><textarea id="ivMessage">面接のご案内です。内容をご確認のうえ、参加可否を選択してください。</textarea><button class="primary" onclick="sendInterview('${appId}')">送信する</button>`}
-async function sendInterview(appId){try{const app=await sb.from('applications').select('*,students(id,email,name),jobs(title)').eq('id',appId).maybeSingle();const a=app.data;await sb.from('interviews').insert({application_id:appId,student_id:a.student_id,company_id:currentProfile.id,interview_datetime:v('ivTime'),method:v('ivMethod'),location:v('ivLocation'),meeting_url:v('ivUrl'),message:v('ivMessage'),status:'学生確認待ち'});await sb.from('applications').update({status:'面接予定'}).eq('id',appId);await notify(a.students.email,'学生','面接案内が届きました',`${currentProfile.company_name} から面接案内が届きました。`);alert('送信しました。');companyApplications();}catch(e){alert('面接案内エラー：'+e.message)}}
-async function setResult(appId,result){await sb.from('applications').update({status:result}).eq('id',appId);const app=await sb.from('applications').select('*,students(email),jobs(title)').eq('id',appId).maybeSingle();await notify(app.data.students.email,'学生','選考結果のお知らせ',`応募中の求人「${app.data.jobs.title}」の結果：${result}`);alert('通知しました。');companyApplications();}
+async function sendInterview(appId){try{const app=await sb.from('applications').select('*,students(id,email,name),jobs(title)').eq('id',appId).maybeSingle();const a=app.data;await sb.from('interviews').insert({application_id:appId,student_id:a.student_id,company_id:currentProfile.id,interview_datetime:v('ivTime'),method:v('ivMethod'),location:v('ivLocation'),meeting_url:v('ivUrl'),message:v('ivMessage'),status:'学生確認待ち'});await sb.from('applications').update({status:'面接予定'}).eq('id',appId);await notify(a.students.email,'student','面接案内が届きました',`${currentProfile.company_name} から面接案内が届きました。`);alert('送信しました。');companyApplications();}catch(e){alert('面接案内エラー：'+e.message)}}
+async function setResult(appId,result){await sb.from('applications').update({status:result,result_status:result}).eq('id',appId);const app=await sb.from('applications').select('*,students(email),jobs(title)').eq('id',appId).maybeSingle();await notify(app.data.students.email,'student','選考結果のお知らせ',`応募中の求人「${app.data.jobs.title}」の結果：${result}`);alert('通知しました。');companyApplications();}
+function companyMessageStudent(email){setModal(`<h2>学生へ連絡</h2><label>宛先</label><input id="cmTo" value="${esc(email)}"><label>メッセージ</label><textarea id="cmBody"></textarea><button onclick="sendCompanyMessage()">送信</button>`)}
+async function sendCompanyMessage(){await sb.from('chat_messages').insert({sender_email:currentProfile.email,receiver_email:v('cmTo'),message:v('cmBody'),read:false});await notify(v('cmTo'),'student','企業から連絡が届きました',v('cmBody'));alert('送信しました。');closeModal();}
 async function companyInterviews(){const r=await sb.from('interviews').select('*,applications(students(name,email),jobs(title))').eq('company_id',currentProfile.id).order('created_at',{ascending:false});companyContent.innerHTML=`<h2>面接管理</h2>${(r.data||[]).map(i=>`<div class="card"><h3>${esc(i.applications?.students?.name)} / ${esc(i.applications?.jobs?.title)}</h3><p>${esc((i.interview_datetime||'').replace('T',' ').slice(0,16))} / ${esc(i.method)}</p><p>回答：${esc(i.student_response||'未回答')}</p></div>`).join('')||'<div class="card">面接予定はありません。</div>'}`}
-async function companyNotifications(){await showNotifications('企業',currentProfile.email,'companyContent')}
+async function companyNotifications(){await showNotifications('company',currentProfile.email,'companyContent')}
+function adminPasswordResetSelf(){setModal(`<h2>パスワード変更</h2><label>新しいパスワード</label><input id="newSelfPw" type="password"><button onclick="changeOwnPassword()">変更する</button>`)}
+async function changeOwnPassword(){const {error}=await sb.auth.updateUser({password:v('newSelfPw')});if(error)return alert('変更エラー：'+error.message);alert('変更しました。');closeModal();}
 
 /* Admin */
-function adminDashboard(){page('adminPage');adminPage.innerHTML=`<h1>管理者ダッシュボード</h1><p>${esc(currentProfile?.email||'')}</p><div class="tabs"><button onclick="adminStats()">統計</button><button onclick="adminStudents()">学生管理</button><button onclick="adminCompanies()">企業管理</button><button onclick="adminJobs()">求人管理</button><button onclick="adminApplications()">応募管理</button><button onclick="adminNotices()">お知らせ配信</button><button onclick="adminChats()">チャット管理</button></div><div id="adminContent"></div>`;adminStats()}
+function adminDashboard(){page('adminPage');adminPage.innerHTML=`<h1>管理者ダッシュボード</h1><p>${esc(currentProfile?.email||'')}</p><div class="tabs"><button onclick="adminStats()">統計</button><button onclick="adminStudents()">学生管理</button><button onclick="adminCompanies()">企業管理</button><button onclick="adminJobs()">求人管理</button><button onclick="adminApplications()">応募管理</button><button onclick="adminNotices()">お知らせ配信</button><button onclick="adminChats()">チャット管理</button><button onclick="adminPasswordTools()">パスワード管理</button></div><div id="adminContent"></div>`;adminStats()}
 async function adminStats(){const [s,c,j,a]=await Promise.all([sb.from('students').select('id'),sb.from('companies').select('id'),sb.from('jobs').select('id'),sb.from('applications').select('id')]);adminContent.innerHTML=`<div class="kpi"><div class="stat"><span>学生数</span><b>${s.data?.length||0}</b></div><div class="stat"><span>企業数</span><b>${c.data?.length||0}</b></div><div class="stat"><span>求人</span><b>${j.data?.length||0}</b></div><div class="stat"><span>応募</span><b>${a.data?.length||0}</b></div></div>`}
 async function adminStudents(){const r=await sb.from('students').select('*').order('created_at',{ascending:false});adminContent.innerHTML=`<h2>学生管理</h2><div class="table-wrap"><table><tr><th>氏名</th><th>メール</th><th>国籍</th><th>日本語</th></tr>${(r.data||[]).map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.email)}</td><td>${esc(s.nationality)}</td><td>${esc(s.japanese_level||s.jlpt)}</td></tr>`).join('')}</table></div>`}
-async function adminCompanies(){const r=await sb.from('companies').select('*').order('created_at',{ascending:false});adminContent.innerHTML=`<h2>企業管理</h2><div class="table-wrap"><table><tr><th>企業名</th><th>メール</th><th>状態</th><th>操作</th></tr>${(r.data||[]).map(c=>`<tr><td>${esc(c.company_name)}</td><td>${esc(c.email)}</td><td>${c.approved?'承認済':'未承認'}</td><td><button onclick="approveCompany('${c.id}')">承認</button></td></tr>`).join('')}</table></div>`}
+async function adminCompanies(){const r=await sb.from('companies').select('*').order('created_at',{ascending:false});adminContent.innerHTML=`<h2>企業管理</h2><div class="table-wrap"><table><tr><th>企業名</th><th>メール</th><th>状態</th><th>操作</th></tr>${(r.data||[]).map(c=>`<tr><td>${esc(c.company_name)}</td><td>${esc(c.email)}</td><td>${c.approved?'承認済':'未承認'}</td><td><button onclick="approveCompany('${c.id}')">承認</button><button class="red" onclick="deleteCompany('${c.id}')">削除</button></td></tr>`).join('')}</table></div>`}
 async function approveCompany(id){await sb.from('companies').update({approved:true,status:'approved'}).eq('id',id);adminCompanies();}
-async function adminJobs(){const r=await sb.from('jobs').select('*,companies(company_name)').order('created_at',{ascending:false});adminContent.innerHTML=`<h2>求人管理</h2>${(r.data||[]).map(j=>`<div class="card"><h3>${esc(j.companies?.company_name||j.company_name)} / ${esc(j.title)}</h3><p>${esc(j.work_place)} / ${esc(j.salary)}</p><span class="tag">${j.job_category==='career'?'就職':'派遣'}</span></div>`).join('')}`}
-async function adminApplications(){const r=await sb.from('applications').select('*,students(name,email),jobs(title,companies(company_name))').order('created_at',{ascending:false});adminContent.innerHTML=`<h2>応募管理</h2><div class="table-wrap"><table><tr><th>学生</th><th>企業</th><th>求人</th><th>状態</th></tr>${(r.data||[]).map(a=>`<tr><td>${esc(a.students?.name)}<br>${esc(a.students?.email)}</td><td>${esc(a.jobs?.companies?.company_name)}</td><td>${esc(a.jobs?.title)}</td><td>${esc(a.status)}</td></tr>`).join('')}</table></div>`}
-function adminNotices(){adminContent.innerHTML=`<h2>お知らせ配信</h2><label>対象</label><select id="ntRole"><option value="all">全員</option><option value="学生">学生</option><option value="企業">企業</option></select><label>カテゴリ</label><select id="ntCat"><option>重要</option><option>案内</option><option>求人</option><option>面接</option></select><label>タイトル</label><input id="ntTitle"><label>本文</label><textarea id="ntBody"></textarea><button class="primary" onclick="sendNotice()">配信する</button>`}
-async function sendNotice(){await sb.from('notifications').insert({target_role:v('ntRole'),title:v('ntTitle'),message:v('ntBody'),category:v('ntCat'),read:false});alert('配信しました。');}
-async function adminChats(){const r=await sb.from('chat_messages').select('*').order('created_at',{ascending:false}).limit(200);adminContent.innerHTML=`<h2>チャット管理</h2>${(r.data||[]).map(m=>`<div class="card"><b>${esc(m.sender_email)}</b> → ${esc(m.receiver_email)}<p>${esc(m.message)}</p></div>`).join('')}`}
+async function deleteCompany(id){if(!confirm('削除しますか？'))return;await sb.from('companies').delete().eq('id',id);adminCompanies();}
+async function adminJobs(){const r=await sb.from('jobs').select('*,companies(company_name)').order('created_at',{ascending:false});adminContent.innerHTML=`<h2>求人管理</h2>${(r.data||[]).map(j=>`<div class="card"><h3>${esc(j.companies?.company_name||j.company_name)} / ${esc(j.title)}</h3><p>${esc(j.work_place)} / ${esc(j.salary)}</p><span class="tag">${j.job_category==='career'?'就職':'派遣'}</span><div><button class="red" onclick="adminDeleteJob('${j.id}')">削除</button></div></div>`).join('')}`}
+async function adminDeleteJob(id){if(!confirm('削除しますか？'))return;await sb.from('jobs').delete().eq('id',id);adminJobs();}
+async function adminApplications(){const r=await sb.from('applications').select('*,students(name,email),jobs(title,companies(company_name))').order('created_at',{ascending:false});adminContent.innerHTML=`<h2>応募管理</h2><div class="table-wrap"><table><tr><th>学生</th><th>企業</th><th>求人</th><th>状態</th><th>操作</th></tr>${(r.data||[]).map(a=>`<tr><td>${esc(a.students?.name)}<br>${esc(a.students?.email)}</td><td>${esc(a.jobs?.companies?.company_name)}</td><td>${esc(a.jobs?.title)}</td><td>${esc(a.status)}</td><td><button onclick="adminSetAppStatus('${a.id}','管理者確認済')">確認済</button><button onclick="adminSetAppStatus('${a.id}','企業確認中')">企業へ送信</button></td></tr>`).join('')}</table></div>`}
+async function adminSetAppStatus(id,status){await sb.from('applications').update({status}).eq('id',id);adminApplications();}
+function adminNotices(){adminContent.innerHTML=`<h2>お知らせ配信</h2><label>対象</label><select id="ntRole"><option value="all">全員</option><option value="student">学生</option><option value="company">企業</option></select><label>カテゴリ</label><select id="ntCat"><option>重要</option><option>案内</option><option>求人</option><option>面接</option></select><label>タイトル</label><input id="ntTitle"><label>本文</label><textarea id="ntBody"></textarea><button class="primary" onclick="sendNotice()">配信する</button>`}
+async function sendNotice(){await sb.from('notifications').insert({target_role:v('ntRole'),title:v('ntTitle'),message:v('ntBody'),category:v('ntCat'),read:false,active:true});alert('配信しました。');}
+async function adminChats(){const r=await sb.from('chat_messages').select('*').order('created_at',{ascending:false}).limit(200);adminContent.innerHTML=`<h2>チャット管理</h2>${(r.data||[]).map(m=>`<div class="card"><b>${esc(m.sender_email)}</b> → ${esc(m.receiver_email)}<p>${esc(m.message)}</p><button onclick="replyChat('${m.sender_email}')">返信</button></div>`).join('')}`}
+function replyChat(to){setModal(`<h2>返信</h2><label>宛先</label><input id="rpTo" value="${esc(to)}"><label>本文</label><textarea id="rpBody"></textarea><button onclick="sendReplyChat()">送信</button>`)}
+async function sendReplyChat(){await sb.from('chat_messages').insert({sender_email:currentProfile.email,receiver_email:v('rpTo'),message:v('rpBody'),read:false});await notify(v('rpTo'),'student','管理者から連絡が届きました',v('rpBody'));alert('送信しました。');closeModal();}
+function adminPasswordTools(){adminContent.innerHTML=`<h2>パスワード管理</h2><div class="alert info">管理者による直接変更には Supabase Edge Function「admin-set-password」が必要です。</div><label>対象メール</label><input id="pwEmail"><label>新しいパスワード</label><input id="pwNew" type="password"><button onclick="adminSetPassword()">パスワード変更</button>`}
+async function adminSetPassword(){try{const res=await fetch(`${SUPABASE_URL}/functions/v1/admin-set-password`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON_KEY},body:JSON.stringify({email:v('pwEmail'),password:v('pwNew')})});const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.error||'変更失敗');alert('変更しました。');}catch(e){alert('パスワード変更エラー：'+e.message)}}
 
-/* Common */
-async function notify(email,role,title,message){await sb.from('notifications').insert({target_email:email||null,target_role:role||'all',title,message,category:'案内',read:false})}
-async function showNotifications(role,email,targetId){
-  const r=await sb.from('notifications').select('*').or(`target_role.eq.all,target_role.eq.${role},target_email.eq.${email}`).order('created_at',{ascending:false});
-  document.getElementById(targetId).innerHTML=`<h2>通知</h2>${(r.data||[]).map(n=>`<div class="card"><h3>${esc(n.title)}</h3><p>${esc(n.message)}</p><button class="red" onclick="deleteNotice('${n.id}','${targetId}','${role}','${email}')">削除</button></div>`).join('')||'<div class="card">通知はありません。</div>'}`;
-}
-async function deleteNotice(id,targetId,role,email){await sb.from('notifications').delete().eq('id',id);showNotifications(role,email,targetId)}
+/* Notifications + Chat */
+async function notify(email,role,title,message){await sb.from('notifications').insert({target_email:email||null,target_role:role||'all',title,message,category:'案内',read:false,active:true})}
+async function showNotifications(role,email,targetId){const r=await sb.from('notifications').select('*').eq('active',true).or(`target_role.eq.all,target_role.eq.${role},target_email.eq.${email}`).order('created_at',{ascending:false});document.getElementById(targetId).innerHTML=`<h2>通知</h2>${(r.data||[]).map(n=>`<div class="card"><h3>${esc(n.title)}</h3><p>${esc(n.message)}</p><button onclick="markNoticeRead('${n.id}')">既読</button><button class="red" onclick="deleteNotice('${n.id}','${targetId}','${role}','${email}')">削除</button></div>`).join('')||'<div class="card">通知はありません。</div>'}`;}
+async function deleteNotice(id,targetId,role,email){await sb.from('notifications').update({active:false}).eq('id',id);showNotifications(role,email,targetId);refreshUnread();}
+async function refreshUnread(){if(!currentUser)return;try{const r=await sb.from('notifications').select('id').eq('active',true).or(`target_role.eq.all,target_role.eq.${currentRole},target_email.eq.${currentProfile.email}`);const reads=await sb.from('notification_reads').select('notification_id').eq('profile_id',currentProfileId);const readSet=new Set((reads.data||[]).map(x=>x.notification_id));const count=(r.data||[]).filter(x=>!readSet.has(x.id)).length;myPageBtn.innerHTML=(currentRole==='admin'?'管理者マイページ':currentRole==='company'?'企業マイページ':'学生マイページ')+(count?` <span class="notify">${count}</span>`:'');}catch(e){}}
 function openChat(){if(!currentUser)return showLogin('student');setModal(`<h2>チャット</h2><label>メッセージ</label><textarea id="chatMsg"></textarea><button onclick="sendChat()">送信</button>`)}
-async function sendChat(){await sb.from('chat_messages').insert({sender_email:currentProfile.email,receiver_email:'admin@sola-career.com',message:v('chatMsg'),read:false});alert('送信しました。');closeModal();}
+async function sendChat(){await sb.from('chat_messages').insert({sender_email:currentProfile.email,receiver_email:'admin@sola-career.com',message:v('chatMsg'),read:false});await notify('admin@sola-career.com','admin','チャットが届きました',v('chatMsg'));alert('送信しました。');closeModal();}
+
 async function init(){const {data}=await sb.auth.getSession();if(data.session?.user){currentUser=data.session.user;await loadProfile('student')}loadHome();}
 init();
 </script>
