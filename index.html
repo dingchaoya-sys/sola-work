@@ -2053,7 +2053,7 @@ function openJobDetail(el){
   const applyBtn=currentProfile?.role==='student'
     ?`<div style="margin-top:16px"><button onclick="applyJob('${kind}','${esc(j.id)}');closeModal()">この求人に応募する ✋</button></div>`:'';
   modalContent.innerHTML=`
-    <span class="link">${kind==='career'?'就職支援':'人材派遣'}</span>
+    <span class="link">${kind==='career'?'就職支援':'人材派遣・アルバイト'}</span>
     <h2 style="margin:8px 0 4px">${esc(j.company)}</h2>
     <p style="margin:0 0 14px;color:var(--muted);font-size:15px;font-weight:800">${esc(j.job_type)}</p>
     <table style="width:100%;font-size:14px;border-collapse:collapse">
@@ -2077,18 +2077,18 @@ async function loadHome(){
     dispatchCount.textContent=(d.data||[]).length+'件';
     careerCount.textContent=(c.data||[]).length+'件';
 
-    // 新着求人（派遣）→ クリックで詳細モーダル
+    // 新着求人（派遣・アルバイト）→ クリックで詳細モーダル
     homeNewJobs.innerHTML=(d.data||[]).slice(0,3).map(j=>`
       <div class="item" style="cursor:pointer" onclick="openJobDetail(this)" data-job='${JSON.stringify(j).replace(/'/g,"&apos;")}' data-kind="dispatch">
         <div>
-          <div class="meta">💼 NEW・人材派遣</div>
+          <div class="meta">💼 NEW・人材派遣・アルバイト</div>
           <div class="title">${esc(j.company)}</div>
           <div class="summary">${esc(j.job_type)}${j.work_place?' / '+esc(j.work_place):''}</div>
         </div>
         <div style="color:var(--blue);font-size:20px;font-weight:900">›</div>
       </div>`).join('')||'<p style="color:var(--muted);font-size:14px">求人はありません</p>';
 
-    // 急募・おすすめ求人（就職）→ クリックで詳細モーダル
+    // 新着・就職支援求人 → クリックで詳細モーダル
     homePickupJobs.innerHTML=(c.data||[]).slice(0,3).map(j=>`
       <div class="item" style="cursor:pointer" onclick="openJobDetail(this)" data-job='${JSON.stringify(j).replace(/'/g,"&apos;")}' data-kind="career">
         <div>
