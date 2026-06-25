@@ -4905,7 +4905,7 @@ async function companySetApplicationResult(kind,id,result){
   companyApplicants();
 }
 
-/* ===== V7.2.3 Stable：応募転送・企業確認 強化修正 ===== */
+/* ===== V7.2.4 Stable：応募転送・企業確認 強化修正 ===== */
 function v723OpenModal(html){
   try{
     modalContent.innerHTML = html;
@@ -5174,6 +5174,297 @@ async function companySendStudentMessage(toEmail, toName){
   alert('学生へ連絡しました。');
   closeModal();
 }
+
+
+/* ===== V7.2.4 Stable：応募学生詳細・面接・結果・チャット通知 修正 ===== */
+
+/* modal close duplicate prevention */
+function v724OpenModal(html){
+  try{
+    const cleaned = String(html || '').replace(/<button[^>]*onclick=["']closeModal\(\)["'][^>]*>閉じる<\/button>/g, '');
+    modalContent.innerHTML = `<button class="gray" onclick="closeModal()">閉じる</button>` + cleaned;
+    modal.classList.add('on');
+  }catch(e){
+    alert('画面表示エラー：' + e.message);
+  }
+}
+function v724ResumeLabel(st, app){
+  const url = app?.resume_url || st?.resume_attachment_url || st?.resume_url || st?.resume_pdf_url || '';
+  return url ? `<a class="link" target="_blank" href="${esc(url)}">履歴書を開く</a>` : '未登録';
+}
+function v724StudentEmail(st, app){ return app?.student_email || st?.email || ''; }
+function v724StudentName(st, app){ return app?.student_name || st?.name || st?.email || app?.student_email || ''; }
+function v724ChatReceiverEmail(){ return currentProfile?.email || ''; }
+
+/* keep old setModal calls safe */
+try{ setModal = v724OpenModal; }catch(e){}
+
+/* fixed student application detail */
+companyViewStudentApplication = async function(kind, id){
+  const tab = kind === 'career' ? 'career_apps' : 'dispatch_apps';
+  const jobRel = kind === 'career' ? 'career_jobs(company,job_type)' : 'dispatch_jobs(company,job_type)';
+  const ar = await sb.from(tab).select('*,students(*),' + jobRel).eq('id', id).maybeSingle();
+  if(ar.error || !ar.data){
+    alert('応募情報を取得できませんでした。');
+    return;
+  }
+  const app = ar.data;
+  const st = app.students || {};
+  const job = kind === 'career' ? app.career_jobs : app.dispatch_jobs;
+  const photo = st.photo_url || st.photo || '';
+  v724OpenModal(`
+    <h2>応募学生詳細</h2>
+    <div class="mini-card">
+      <p><b>求人：</b>${esc(job?.company || app.company_name || '')} / ${esc(job?.job_type || '')}</p>
+      <p><b>状態：</b>${esc(app.status || '')}</p>
+    </div>
+    <table style="width:100%;border-collapse:collapse">
+      <tr><th style="width:130px;background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">氏名</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${esc(v724StudentName(st,app))}</td></tr>
+      <tr><th style="background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">メール</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${esc(v724StudentEmail(st,app))}</td></tr>
+      <tr><th style="background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">電話番号</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${esc(st.phone || st.tel || '')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">国籍</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${esc(st.nationality || st.nation || '')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">学科・クラス</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${esc(st.department || st.class_name || st.cls || '')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">日本語</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${esc(st.japanese_level || st.jlpt || '')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">履歴書</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${v724ResumeLabel(st,app)}</td></tr>
+      ${photo ? `<tr><th style="background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">写真</th><td style="padding:8px;border-bottom:1px solid #e5e7eb"><a class="link" target="_blank" href="${esc(photo)}">写真を開く</a></td></tr>` : ''}
+    </table>
+    <div class="v561-toolbar" style="margin-top:14px">
+      <button onclick="companyContactStudent('${kind}','${id}')">学生へ連絡</button>
+      <button onclick="closeModal();companyCreateInterviewFromApp('${kind}','${id}')">面接案内</button>
+      <button onclick="companySetApplicationResult('${kind}','${id}','内定')">内定</button>
+      <button class="secondary" onclick="companySetApplicationResult('${kind}','${id}','保留')">保留</button>
+      <button class="red" onclick="companySetApplicationResult('${kind}','${id}','不採用')">不採用</button>
+    </div>
+  `);
+};
+
+/* fixed interview form and submit */
+companyCreateInterviewFromApp = async function(kind, id){
+  const tab = kind === 'career' ? 'career_apps' : 'dispatch_apps';
+  const jobRel = kind === 'career' ? 'career_jobs(company,job_type)' : 'dispatch_jobs(company,job_type)';
+  const ar = await sb.from(tab).select('*,students(*),' + jobRel).eq('id', id).maybeSingle();
+  if(ar.error || !ar.data){
+    alert('応募情報を取得できませんでした。');
+    return;
+  }
+  const app = ar.data;
+  const st = app.students || {};
+  const job = kind === 'career' ? app.career_jobs : app.dispatch_jobs;
+  const title = `${job?.company || app.company_name || ''} / ${job?.job_type || ''}`;
+  v724OpenModal(`
+    <h2>面接案内</h2>
+    <div class="mini-card">
+      <p><b>学生：</b>${esc(v724StudentName(st, app))}</p>
+      <p><b>求人：</b>${esc(title)}</p>
+    </div>
+    <label>面接日時</label>
+    <input id="v724InterviewDateTime" type="datetime-local">
+    <label>面接方法</label>
+    <select id="v724InterviewMethod"><option>対面</option><option>オンライン</option><option>電話</option></select>
+    <label>面接場所</label>
+    <input id="v724InterviewPlace" placeholder="SOLA学園 / 企業所在地など">
+    <label>Zoom URL / Google Meet URL</label>
+    <input id="v724InterviewUrl" placeholder="https://...">
+    <label>学生へのメッセージ</label>
+    <textarea id="v724InterviewMessage">面接のご案内です。内容をご確認のうえ、参加可否を選択してください。</textarea>
+    <button class="primary" onclick="companySendInterviewV724('${kind}','${id}')">面接案内を送信する</button>
+  `);
+};
+
+companySendInterviewV724 = async function(kind, id){
+  try{
+    const tab = kind === 'career' ? 'career_apps' : 'dispatch_apps';
+    const jobRel = kind === 'career' ? 'career_jobs(company,job_type)' : 'dispatch_jobs(company,job_type)';
+    const ar = await sb.from(tab).select('*,students(*),' + jobRel).eq('id', id).maybeSingle();
+    if(ar.error || !ar.data){
+      alert('応募情報を取得できませんでした。');
+      return;
+    }
+    const app = ar.data;
+    const st = app.students || {};
+    const job = kind === 'career' ? app.career_jobs : app.dispatch_jobs;
+    const studentEmail = v724StudentEmail(st, app);
+    const studentName = v724StudentName(st, app);
+    const dt = document.getElementById('v724InterviewDateTime')?.value || '';
+    const method = document.getElementById('v724InterviewMethod')?.value || '';
+    const place = document.getElementById('v724InterviewPlace')?.value || '';
+    const url = document.getElementById('v724InterviewUrl')?.value || '';
+    const message = document.getElementById('v724InterviewMessage')?.value || '';
+
+    if(!dt){
+      alert('面接日時を入力してください。');
+      return;
+    }
+
+    let ins = await sb.from('interviews').insert({
+      application_id: id,
+      student_id: app.student_id,
+      company_id: app.company_id || app.forwarded_company_id || null,
+      interview_datetime: dt,
+      method: method,
+      location: place,
+      meeting_url: url,
+      message: message,
+      status: '学生確認待ち',
+      student_response: '未回答',
+      student_confirmed: false
+    });
+
+    if(ins.error){
+      alert('面接案内エラー：' + ins.error.message);
+      return;
+    }
+
+    await sb.from(tab).update({
+      status: '面接案内済み',
+      process_status: '面接案内済み',
+      last_action_by: 'company'
+    }).eq('id', id);
+
+    await v722Notice('student', studentEmail, '面接案内が届きました', `${job?.company || app.company_name || '企業'} から面接案内が届きました。面接予定を確認してください。`, '面接');
+
+    alert('面接案内を送信しました。');
+    closeModal();
+    if(typeof companyApplicants === 'function') companyApplicants();
+  }catch(e){
+    alert('面接案内エラー：' + e.message);
+  }
+};
+
+/* fixed result buttons */
+companySetApplicationResult = async function(kind, id, result){
+  try{
+    const tab = kind === 'career' ? 'career_apps' : 'dispatch_apps';
+    const ar = await sb.from(tab).select('*,students(*),' + (kind === 'career' ? 'career_jobs(company,job_type)' : 'dispatch_jobs(company,job_type)')).eq('id', id).maybeSingle();
+    if(ar.error || !ar.data){
+      alert('応募情報を取得できませんでした。');
+      return;
+    }
+    const app = ar.data;
+    const st = app.students || {};
+    const job = kind === 'career' ? app.career_jobs : app.dispatch_jobs;
+    const studentEmail = v724StudentEmail(st, app);
+    if(!confirm(`選考結果を「${result}」に更新しますか？`)) return;
+
+    const r = await sb.from(tab).update({
+      status: result,
+      result_status: result,
+      process_status: result,
+      last_action_by: 'company'
+    }).eq('id', id);
+
+    if(r.error){
+      alert('更新エラー：' + r.error.message);
+      return;
+    }
+
+    await v722Notice('student', studentEmail, '選考結果のお知らせ', `応募中の求人「${job?.company || app.company_name || ''} / ${job?.job_type || ''}」の結果：${result}`, '選考結果');
+
+    alert('選考結果を更新し、学生へ通知しました。');
+    closeModal();
+    if(typeof companyApplicants === 'function') companyApplicants();
+  }catch(e){
+    alert('選考結果エラー：' + e.message);
+  }
+};
+
+/* fixed company -> student message with visible chat notice */
+companyContactStudent = async function(kind, id){
+  const tab = kind === 'career' ? 'career_apps' : 'dispatch_apps';
+  const ar = await sb.from(tab).select('*,students(name,email)').eq('id', id).maybeSingle();
+  if(ar.error || !ar.data){
+    alert('応募情報を取得できませんでした。');
+    return;
+  }
+  const app = ar.data;
+  const st = app.students || {};
+  const toEmail = app.student_email || st.email || '';
+  const toName = app.student_name || st.name || toEmail;
+  if(!toEmail){
+    alert('学生メールアドレスが登録されていません。');
+    return;
+  }
+  v724OpenModal(`
+    <h2>学生へ連絡</h2>
+    <p><b>宛先：</b>${esc(toName)} / ${esc(toEmail)}</p>
+    <label>メッセージ</label>
+    <textarea id="v724CompanyMsg">応募ありがとうございます。内容を確認しましたので、ご連絡いたします。</textarea>
+    <button class="primary" onclick="companySendStudentMessageV724('${esc(toEmail)}','${esc(toName)}')">送信する</button>
+  `);
+};
+
+companySendStudentMessageV724 = async function(toEmail, toName){
+  const msg = document.getElementById('v724CompanyMsg')?.value || '';
+  if(!msg.trim()){
+    alert('メッセージを入力してください。');
+    return;
+  }
+  const comp = await v722GetCompanySafe();
+  const fromName = comp?.company_name || comp?.name || currentProfile?.name || '企業';
+
+  const r = await sb.from('chat_messages').insert({
+    user_email: toEmail,
+    user_role: 'student',
+    user_name: toName || toEmail,
+    sender_role: 'company',
+    sender: 'company',
+    message: `【${fromName}】\n${msg}`,
+    read_by_admin: false,
+    read_by_user: false
+  });
+
+  if(r.error){
+    alert('送信エラー：' + r.error.message);
+    return;
+  }
+
+  await v722Notice('student', toEmail, '企業からチャットが届きました', `${fromName} からメッセージが届きました。チャットを確認してください。`, 'チャット');
+
+  alert('学生へ連絡しました。');
+  closeModal();
+};
+
+/* stronger student chat: show unread company/admin message count */
+try{
+  const oldStudentDashboardV724 = studentDashboard;
+  studentDashboard = async function(){
+    await oldStudentDashboardV724();
+    try{
+      const email = currentProfile?.email || '';
+      if(!email) return;
+      const cr = await sb.from('chat_messages')
+        .select('id')
+        .eq('user_email', email)
+        .neq('sender_role', 'student')
+        .eq('read_by_user', false);
+      const count = (cr.data || []).length;
+      const tabs = document.querySelector('#studentPage .tabs') || document.querySelector('.tabs');
+      if(tabs && count && !document.getElementById('v724StudentChatBadge')){
+        const b = document.createElement('button');
+        b.id = 'v724StudentChatBadge';
+        b.innerHTML = `チャット <span class="notify-badge">${count}</span>`;
+        b.onclick = () => {
+          if(typeof studentChat === 'function') studentChat();
+          else if(typeof openStudentChat === 'function') openStudentChat();
+          else openMyNotificationsAndMarkRead();
+        };
+        tabs.appendChild(b);
+      }
+    }catch(e){}
+  };
+}catch(e){}
+
+/* mark chat read when student opens chat, if a studentChat function exists */
+try{
+  const oldStudentChatV724 = studentChat;
+  studentChat = async function(){
+    const email = currentProfile?.email || '';
+    if(email){
+      await sb.from('chat_messages').update({read_by_user:true}).eq('user_email', email).neq('sender_role','student');
+    }
+    await oldStudentChatV724();
+  };
+}catch(e){}
 
 </script>
 </body>
