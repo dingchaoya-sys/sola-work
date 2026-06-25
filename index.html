@@ -4904,6 +4904,277 @@ async function companySetApplicationResult(kind,id,result){
   alert('結果を通知しました。');
   companyApplicants();
 }
+
+/* ===== V7.2.3 Stable：応募転送・企業確認 強化修正 ===== */
+function v723OpenModal(html){
+  try{
+    modalContent.innerHTML = html;
+    modal.classList.add('on');
+  }catch(e){
+    alert('画面表示エラー：' + e.message);
+  }
+}
+function v723ResumeLink(st, app){
+  const url = app?.resume_url || st?.resume_attachment_url || st?.resume_url || st?.resume_pdf_url || '';
+  return url ? `<a class="link" target="_blank" href="${esc(url)}">履歴書を開く</a>` : '未登録';
+}
+function v723StudentInfoHtml(st, app){
+  const resume = v723ResumeLink(st, app);
+  const photo = st?.photo_url || st?.photo || '';
+  return `
+    <table style="width:100%;border-collapse:collapse">
+      <tr><th style="width:130px;background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">氏名</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${esc(app?.student_name || st?.name || '')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">メール</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${esc(app?.student_email || st?.email || '')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">電話番号</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${esc(st?.phone || st?.tel || '')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">国籍</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${esc(st?.nationality || st?.nation || '')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">学科・クラス</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${esc(st?.department || st?.class_name || st?.cls || '')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">日本語</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${esc(st?.japanese_level || st?.jlpt || '')}</td></tr>
+      <tr><th style="background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">履歴書</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${resume}</td></tr>
+      ${photo ? `<tr><th style="background:#f8fafc;padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">写真</th><td style="padding:8px;border-bottom:1px solid #e5e7eb"><a class="link" target="_blank" href="${esc(photo)}">写真を開く</a></td></tr>` : ''}
+    </table>`;
+}
+
+/* 転送画面：setModal未定義による無反応を修正 */
+adminForwardApplication = async function(kind, id){
+  try{
+    const tab = kind === 'career' ? 'career_apps' : 'dispatch_apps';
+    const jobRel = kind === 'career' ? 'career_jobs(company,job_type)' : 'dispatch_jobs(company,job_type)';
+    const ar = await sb.from(tab)
+      .select('*,students(*),' + jobRel)
+      .eq('id', id)
+      .maybeSingle();
+
+    if(ar.error || !ar.data){
+      alert('応募情報を取得できませんでした：' + (ar.error?.message || ''));
+      return;
+    }
+
+    const app = ar.data;
+    const st = app.students || {};
+    const job = kind === 'career' ? app.career_jobs : app.dispatch_jobs;
+
+    const cr = await sb.from('companies')
+      .select('*')
+      .order('company_name', { ascending: true });
+
+    if(cr.error){
+      alert('企業一覧を取得できませんでした：' + cr.error.message);
+      return;
+    }
+
+    const companies = cr.data || [];
+    if(!companies.length){
+      alert('企業が登録されていません。先に企業アカウントを登録してください。');
+      return;
+    }
+
+    const options = companies.map(c => {
+      const name = c.company_name || c.name || c.email || '企業名未設定';
+      const email = c.email || '';
+      const status = c.approved === false ? '（未承認）' : '';
+      return `<option value="${esc(c.id)}" data-email="${esc(email)}" data-name="${esc(name)}">${esc(name)} / ${esc(email || 'メール未登録')} ${status}</option>`;
+    }).join('');
+
+    v723OpenModal(`
+      <button class="gray" onclick="closeModal()">閉じる</button>
+      <h2>応募を企業へ転送</h2>
+      <div class="alert info">企業を選択して転送すると、企業マイページの「応募学生」に表示されます。学生の連絡先と履歴書も確認できます。</div>
+      <div class="mini-card">
+        <p><b>学生：</b>${esc(app.student_name || st.name || app.student_email || st.email || '')}</p>
+        <p><b>求人：</b>${esc(job?.company || app.company_name || '')} / ${esc(job?.job_type || '')}</p>
+        <p><b>履歴書：</b>${v723ResumeLink(st, app)}</p>
+      </div>
+      <label>転送先企業</label>
+      <select id="v722ForwardCompany">${options}</select>
+      <label>企業へのメッセージ</label>
+      <textarea id="v722ForwardMessage">学生から応募がありました。学生情報と履歴書をご確認のうえ、面接案内等のご対応をお願いいたします。</textarea>
+      <button class="primary" onclick="adminDoForwardApplication('${kind}','${id}')">この企業へ転送する</button>
+    `);
+  }catch(e){
+    alert('転送画面エラー：' + e.message);
+  }
+};
+
+adminDoForwardApplication = async function(kind, id){
+  try{
+    const sel = document.getElementById('v722ForwardCompany');
+    if(!sel){
+      alert('転送先企業を選択してください。');
+      return;
+    }
+
+    const opt = sel.options[sel.selectedIndex];
+    const companyId = sel.value;
+    const companyEmail = opt.dataset.email || '';
+    const companyName = opt.dataset.name || '';
+    const msg = document.getElementById('v722ForwardMessage')?.value || '';
+
+    if(!companyEmail){
+      alert('この企業にはメールアドレスが登録されていません。企業アカウントのメールを登録してから転送してください。');
+      return;
+    }
+
+    const tab = kind === 'career' ? 'career_apps' : 'dispatch_apps';
+    const p = {
+      status: '企業確認中',
+      admin_status: '企業へ転送済み',
+      process_status: '企業確認中',
+      application_route: '管理者経由',
+      route: '管理者経由',
+      forwarded_to_company: true,
+      forwarded_company_id: companyId,
+      forwarded_company_email: companyEmail,
+      forwarded_at: new Date().toISOString(),
+      company_id: companyId,
+      company_email: companyEmail,
+      company_name: companyName,
+      last_action_by: 'admin'
+    };
+
+    const r = await sb.from(tab).update(p).eq('id', id);
+    if(r.error){
+      alert('転送エラー：' + r.error.message);
+      return;
+    }
+
+    await v722Notice('company', companyEmail, '応募学生の情報が届きました', msg, '応募');
+
+    alert('企業へ転送しました。企業マイページの「応募学生」に表示されます。');
+    closeModal();
+    adminApplications();
+  }catch(e){
+    alert('転送エラー：' + e.message);
+  }
+};
+
+/* 企業側：学生詳細・履歴書・連絡ボタンを追加 */
+companyApplicants = async function(){
+  const comp = await v722GetCompanySafe();
+  const email = currentProfile?.email || comp?.email || '';
+  const cid = comp?.id || '';
+  const rows = await v722LoadApplications();
+
+  const mine = rows.filter(x => {
+    const a = x.raw;
+    return (a.forwarded_company_email && a.forwarded_company_email === email)
+      || (a.company_email && a.company_email === email)
+      || (cid && a.forwarded_company_id === cid)
+      || (cid && a.company_id === cid);
+  });
+
+  let h = `<button class="gray" onclick="companyDashboard()">← 戻る</button>
+    <h3>応募学生</h3>
+    <div class="alert info">管理者から転送された応募学生を確認できます。履歴書を開き、学生へ連絡し、面接案内を送信できます。</div>`;
+
+  if(!mine.length){
+    companyContent.innerHTML = h + '<div class="mini-card">応募学生はありません。</div>';
+    return;
+  }
+
+  h += '<table><tr><th>区分</th><th>求人</th><th>学生</th><th>状態</th><th>履歴書</th><th>操作</th></tr>';
+  mine.forEach(x => {
+    const a = x.raw, st = x.student, job = x.job;
+    const resume = a.resume_url || st.resume_attachment_url || st.resume_url || '';
+    h += `<tr>
+      <td>${x.kindLabel}</td>
+      <td>${esc(job.company || a.company_name || '')}<br>${esc(job.job_type || '')}</td>
+      <td>${esc(a.student_name || st.name || '')}<br>${esc(a.student_email || st.email || '')}</td>
+      <td>${esc(a.status || '企業確認中')}</td>
+      <td>${resume ? `<a class="link" target="_blank" href="${esc(resume)}">履歴書</a>` : '未登録'}</td>
+      <td>
+        <button onclick="companyViewStudentApplication('${x.kind}','${x.id}')">学生詳細</button>
+        <button onclick="companyContactStudent('${x.kind}','${x.id}')">学生へ連絡</button>
+        <button onclick="companyCreateInterviewFromApp('${x.kind}','${x.id}')">面接案内</button>
+        <button onclick="companySetApplicationResult('${x.kind}','${x.id}','内定')">内定</button>
+        <button class="secondary" onclick="companySetApplicationResult('${x.kind}','${x.id}','保留')">保留</button>
+        <button class="red" onclick="companySetApplicationResult('${x.kind}','${x.id}','不採用')">不採用</button>
+      </td>
+    </tr>`;
+  });
+  companyContent.innerHTML = h + '</table>';
+};
+
+async function companyViewStudentApplication(kind, id){
+  const tab = kind === 'career' ? 'career_apps' : 'dispatch_apps';
+  const jobRel = kind === 'career' ? 'career_jobs(company,job_type)' : 'dispatch_jobs(company,job_type)';
+  const ar = await sb.from(tab).select('*,students(*),' + jobRel).eq('id', id).maybeSingle();
+  if(ar.error || !ar.data){
+    alert('学生情報を取得できませんでした。');
+    return;
+  }
+  const app = ar.data;
+  const st = app.students || {};
+  const job = kind === 'career' ? app.career_jobs : app.dispatch_jobs;
+
+  v723OpenModal(`
+    <button class="gray" onclick="closeModal()">閉じる</button>
+    <h2>応募学生詳細</h2>
+    <div class="mini-card">
+      <p><b>求人：</b>${esc(job?.company || app.company_name || '')} / ${esc(job?.job_type || '')}</p>
+      <p><b>状態：</b>${esc(app.status || '')}</p>
+    </div>
+    ${v723StudentInfoHtml(st, app)}
+    <div class="v561-toolbar">
+      <button onclick="companyContactStudent('${kind}','${id}')">学生へ連絡</button>
+      <button onclick="closeModal();companyCreateInterviewFromApp('${kind}','${id}')">面接案内</button>
+    </div>
+  `);
+}
+
+async function companyContactStudent(kind, id){
+  const tab = kind === 'career' ? 'career_apps' : 'dispatch_apps';
+  const ar = await sb.from(tab).select('*,students(name,email)').eq('id', id).maybeSingle();
+  if(ar.error || !ar.data){
+    alert('応募情報を取得できませんでした。');
+    return;
+  }
+  const app = ar.data;
+  const st = app.students || {};
+  const toEmail = app.student_email || st.email || '';
+  const toName = app.student_name || st.name || toEmail;
+
+  if(!toEmail){
+    alert('学生メールアドレスが登録されていません。');
+    return;
+  }
+
+  v723OpenModal(`
+    <button class="gray" onclick="closeModal()">閉じる</button>
+    <h2>学生へ連絡</h2>
+    <p><b>宛先：</b>${esc(toName)} / ${esc(toEmail)}</p>
+    <label>メッセージ</label>
+    <textarea id="v723CompanyMsg">応募ありがとうございます。内容を確認しましたので、ご連絡いたします。</textarea>
+    <button class="primary" onclick="companySendStudentMessage('${esc(toEmail)}','${esc(toName)}')">送信する</button>
+  `);
+}
+
+async function companySendStudentMessage(toEmail, toName){
+  const msg = document.getElementById('v723CompanyMsg')?.value || '';
+  if(!msg.trim()){
+    alert('メッセージを入力してください。');
+    return;
+  }
+  const comp = await v722GetCompanySafe();
+  const fromName = comp?.company_name || comp?.name || currentProfile?.name || '企業';
+  const r = await sb.from('chat_messages').insert({
+    user_email: toEmail,
+    user_role: 'student',
+    user_name: toName || toEmail,
+    sender_role: 'company',
+    sender: 'company',
+    message: `【${fromName}】\n${msg}`,
+    read_by_admin: false,
+    read_by_user: false
+  });
+  if(r.error){
+    alert('送信エラー：' + r.error.message);
+    return;
+  }
+  await v722Notice('student', toEmail, '企業から連絡が届きました', `${fromName} からメッセージが届きました。チャットを確認してください。`, 'チャット');
+  alert('学生へ連絡しました。');
+  closeModal();
+}
+
 </script>
 </body>
 </html>
