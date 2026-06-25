@@ -4905,7 +4905,7 @@ async function companySetApplicationResult(kind,id,result){
   companyApplicants();
 }
 
-/* ===== V7.2.5 Stable：応募転送・企業確認 強化修正 ===== */
+/* ===== V7.2.6 Stable：応募転送・企業確認 強化修正 ===== */
 function v723OpenModal(html){
   try{
     modalContent.innerHTML = html;
@@ -5176,7 +5176,7 @@ async function companySendStudentMessage(toEmail, toName){
 }
 
 
-/* ===== V7.2.5 Stable：応募学生詳細・面接・結果・チャット通知 修正 ===== */
+/* ===== V7.2.6 Stable：応募学生詳細・面接・結果・チャット通知 修正 ===== */
 
 /* modal close duplicate prevention */
 function v724OpenModal(html){
@@ -5467,7 +5467,7 @@ try{
 }catch(e){}
 
 
-/* ===== V7.2.5 Stable：チャット未読バッジ・転送Modal閉じる重複修正 ===== */
+/* ===== V7.2.6 Stable：チャット未読バッジ・転送Modal閉じる重複修正 ===== */
 
 /* 既存HTML内の閉じるボタンを完全に1つだけにする */
 function v725OpenModal(html){
@@ -5701,6 +5701,184 @@ document.addEventListener('click',function(e){
     v725MarkChatRead();
   }
 },true);
+
+
+/* ===== V7.2.6 Stable：PWA Push通知機能 ===== */
+const V726_VAPID_PUBLIC_KEY = 'REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY';
+
+function v726UrlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for(let i=0;i<rawData.length;++i) outputArray[i]=rawData.charCodeAt(i);
+  return outputArray;
+}
+function v726CanPush(){
+  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+async function v726RegisterSW(){
+  if(!('serviceWorker' in navigator)) return null;
+  try{
+    return await navigator.serviceWorker.register('/sw.js?v=726');
+  }catch(e){
+    console.warn('Service Worker登録エラー', e);
+    return null;
+  }
+}
+async function v726GetPushRole(){
+  return currentProfile?.role || selectedRole || selectedLoginRole || 'student';
+}
+async function v726SavePushSubscription(subscription){
+  if(!currentProfile?.email) return false;
+  const role = await v726GetPushRole();
+  const subObj = subscription.toJSON ? subscription.toJSON() : subscription;
+  const p = {
+    user_email: currentProfile.email,
+    user_role: role,
+    endpoint: subObj.endpoint,
+    subscription: subObj,
+    active: true,
+    updated_at: new Date().toISOString()
+  };
+  const r = await sb.from('push_subscriptions').upsert(p, {onConflict:'endpoint'});
+  if(r.error){
+    alert('Push購読保存エラー：' + r.error.message);
+    return false;
+  }
+  return true;
+}
+async function enablePushNotifications(){
+  try{
+    if(!currentProfile?.email){ alert('先にログインしてください。'); return; }
+    if(!v726CanPush()){
+      alert('このブラウザはPush通知に対応していません。Chrome / Edge / Android Chrome 推奨です。iPhoneはホーム画面に追加後、iOS 16.4以降で対応します。');
+      return;
+    }
+    if(!V726_VAPID_PUBLIC_KEY || V726_VAPID_PUBLIC_KEY.includes('REPLACE_WITH')){
+      alert('VAPID公開鍵が未設定です。index.html の V726_VAPID_PUBLIC_KEY を設定してください。');
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if(permission !== 'granted'){
+      alert('通知が許可されませんでした。ブラウザ設定から通知を許可してください。');
+      return;
+    }
+    const reg = await v726RegisterSW();
+    if(!reg){ alert('Service Worker登録に失敗しました。sw.js をアップロードしてください。'); return; }
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: v726UrlBase64ToUint8Array(V726_VAPID_PUBLIC_KEY)
+      });
+    }
+    const ok = await v726SavePushSubscription(sub);
+    if(ok){
+      alert('通知を許可しました。新着通知・チャット・面接案内を受け取れます。');
+      v726UpdatePushButtons();
+    }
+  }catch(e){ alert('通知設定エラー：' + e.message); }
+}
+async function disablePushNotifications(){
+  try{
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = await reg?.pushManager?.getSubscription();
+    if(sub){
+      await sb.from('push_subscriptions').update({active:false,updated_at:new Date().toISOString()}).eq('endpoint', sub.endpoint);
+      await sub.unsubscribe();
+    }
+    alert('この端末の通知を解除しました。');
+    v726UpdatePushButtons();
+  }catch(e){ alert('通知解除エラー：' + e.message); }
+}
+async function v726PushStatusText(){
+  if(!v726CanPush()) return '通知非対応';
+  if(!currentProfile?.email) return '未ログイン';
+  if(Notification.permission === 'granted') return '通知許可済み ✅';
+  if(Notification.permission === 'denied') return '通知ブロック中';
+  return '通知未設定';
+}
+async function v726PushButtonHtml(){
+  const txt = await v726PushStatusText();
+  if(txt === '通知許可済み ✅') return `<button class="gray" onclick="disablePushNotifications()">通知許可済み ✅</button>`;
+  return `<button class="blue" onclick="enablePushNotifications()">通知を許可</button>`;
+}
+async function v726UpdatePushButtons(){
+  try{
+    const html = await v726PushButtonHtml();
+    document.querySelectorAll('[data-v726-push-slot]').forEach(el=>{ el.innerHTML = html; });
+  }catch(e){}
+}
+function v726AddPushSlotToPage(){
+  try{
+    const pageIds = ['studentPage','companyPage','adminPage'];
+    pageIds.forEach(id=>{
+      const p = document.getElementById(id);
+      if(!p || p.querySelector('[data-v726-push-slot]')) return;
+      const slot = document.createElement('div');
+      slot.setAttribute('data-v726-push-slot','1');
+      slot.style.margin = '12px 0';
+      const tabs = p.querySelector('.tabs');
+      if(tabs && tabs.parentNode) tabs.parentNode.insertBefore(slot, tabs.nextSibling);
+      else p.prepend(slot);
+    });
+    v726UpdatePushButtons();
+  }catch(e){}
+}
+async function v726SendPush(targetRole, targetEmail, title, body, url='/'){
+  try{
+    const session = await sb.auth.getSession();
+    const token = session.data?.session?.access_token || SUPABASE_ANON_KEY || '';
+    await fetch(SUPABASE_URL + '/functions/v1/send-push', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Authorization':'Bearer ' + token},
+      body: JSON.stringify({
+        target_role: targetRole || 'all',
+        target_email: targetEmail || null,
+        title: title || 'SOLA CAREER CENTER',
+        body: body || '',
+        url: url || '/'
+      })
+    });
+  }catch(e){ console.warn('Push送信エラー', e); }
+}
+try{
+  const oldV722NoticeV726 = v722Notice;
+  v722Notice = async function(role, email, title, body, category){
+    const r = await oldV722NoticeV726(role, email, title, body, category);
+    await v726SendPush(role, email, title, body, '/?from=push');
+    return r;
+  };
+}catch(e){}
+try{
+  const oldCreateInAppNoticeV726 = createInAppNotice;
+  createInAppNotice = async function(targetRole, targetEmail, title, body, category, noticeType, attachmentUrl, attachmentName){
+    const r = await oldCreateInAppNoticeV726(targetRole, targetEmail, title, body, category, noticeType, attachmentUrl, attachmentName);
+    await v726SendPush(targetRole, targetEmail, title, body, '/?from=push');
+    return r;
+  };
+}catch(e){}
+try{
+  const oldUpdateHeaderV726 = updateHeader;
+  updateHeader = async function(){
+    const r = await oldUpdateHeaderV726.apply(this, arguments);
+    setTimeout(v726AddPushSlotToPage, 500);
+    return r;
+  };
+}catch(e){}
+try{
+  const oldGoMyPageV726 = goMyPage;
+  goMyPage = async function(){
+    const r = await oldGoMyPageV726.apply(this, arguments);
+    setTimeout(v726AddPushSlotToPage, 500);
+    return r;
+  };
+}catch(e){}
+document.addEventListener('DOMContentLoaded',()=>{
+  v726RegisterSW();
+  setTimeout(v726AddPushSlotToPage, 1200);
+});
 
 </script>
 </body>
