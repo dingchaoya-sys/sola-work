@@ -4905,7 +4905,7 @@ async function companySetApplicationResult(kind,id,result){
   companyApplicants();
 }
 
-/* ===== V7.2.4 Stable：応募転送・企業確認 強化修正 ===== */
+/* ===== V7.2.5 Stable：応募転送・企業確認 強化修正 ===== */
 function v723OpenModal(html){
   try{
     modalContent.innerHTML = html;
@@ -5176,7 +5176,7 @@ async function companySendStudentMessage(toEmail, toName){
 }
 
 
-/* ===== V7.2.4 Stable：応募学生詳細・面接・結果・チャット通知 修正 ===== */
+/* ===== V7.2.5 Stable：応募学生詳細・面接・結果・チャット通知 修正 ===== */
 
 /* modal close duplicate prevention */
 function v724OpenModal(html){
@@ -5465,6 +5465,242 @@ try{
     await oldStudentChatV724();
   };
 }catch(e){}
+
+
+/* ===== V7.2.5 Stable：チャット未読バッジ・転送Modal閉じる重複修正 ===== */
+
+/* 既存HTML内の閉じるボタンを完全に1つだけにする */
+function v725OpenModal(html){
+  try{
+    let cleaned = String(html || '');
+
+    /* onclick が closeModal 系の閉じるボタンを全部削除 */
+    cleaned = cleaned.replace(/<button[^>]*onclick=["'][^"']*closeModal\(\)[^"']*["'][^>]*>[\s\S]*?閉じる[\s\S]*?<\/button>/g, '');
+
+    /* 念のため、文字だけの重複閉じるボタンも削除 */
+    cleaned = cleaned.replace(/<button[^>]*>[\s\S]*?閉じる[\s\S]*?<\/button>/g, '');
+
+    modalContent.innerHTML = `<button class="gray" onclick="closeModal()">閉じる</button>` + cleaned;
+    modal.classList.add('on');
+  }catch(e){
+    alert('画面表示エラー：' + e.message);
+  }
+}
+
+/* setModal / v723 / v724 系をすべて上書きして二重閉じるを防止 */
+try{ setModal = v725OpenModal; }catch(e){}
+try{ v723OpenModal = v725OpenModal; }catch(e){}
+try{ v724OpenModal = v725OpenModal; }catch(e){}
+
+/* 管理者転送画面も閉じる重複なしで再上書き */
+adminForwardApplication = async function(kind, id){
+  try{
+    const tab = kind === 'career' ? 'career_apps' : 'dispatch_apps';
+    const jobRel = kind === 'career' ? 'career_jobs(company,job_type)' : 'dispatch_jobs(company,job_type)';
+    const ar = await sb.from(tab)
+      .select('*,students(*),' + jobRel)
+      .eq('id', id)
+      .maybeSingle();
+
+    if(ar.error || !ar.data){
+      alert('応募情報を取得できませんでした：' + (ar.error?.message || ''));
+      return;
+    }
+
+    const app = ar.data;
+    const st = app.students || {};
+    const job = kind === 'career' ? app.career_jobs : app.dispatch_jobs;
+
+    const cr = await sb.from('companies')
+      .select('*')
+      .order('company_name', { ascending: true });
+
+    if(cr.error){
+      alert('企業一覧を取得できませんでした：' + cr.error.message);
+      return;
+    }
+
+    const companies = cr.data || [];
+    if(!companies.length){
+      alert('企業が登録されていません。先に企業アカウントを登録してください。');
+      return;
+    }
+
+    const options = companies.map(c => {
+      const name = c.company_name || c.name || c.email || '企業名未設定';
+      const email = c.email || '';
+      const status = c.approved === false ? '（未承認）' : '';
+      return `<option value="${esc(c.id)}" data-email="${esc(email)}" data-name="${esc(name)}">${esc(name)} / ${esc(email || 'メール未登録')} ${status}</option>`;
+    }).join('');
+
+    const resumeUrl = app.resume_url || st.resume_attachment_url || st.resume_url || st.resume_pdf_url || '';
+    const resumeHtml = resumeUrl ? `<a class="link" target="_blank" href="${esc(resumeUrl)}">履歴書を開く</a>` : '未登録';
+
+    v725OpenModal(`
+      <h2>応募を企業へ転送</h2>
+      <div class="alert info">企業を選択して転送すると、企業マイページの「応募学生」に表示されます。学生の連絡先と履歴書も確認できます。</div>
+      <div class="mini-card">
+        <p><b>学生：</b>${esc(app.student_name || st.name || app.student_email || st.email || '')}</p>
+        <p><b>求人：</b>${esc(job?.company || app.company_name || '')} / ${esc(job?.job_type || '')}</p>
+        <p><b>履歴書：</b>${resumeHtml}</p>
+      </div>
+      <label>転送先企業</label>
+      <select id="v722ForwardCompany">${options}</select>
+      <label>企業へのメッセージ</label>
+      <textarea id="v722ForwardMessage">学生から応募がありました。学生情報と履歴書をご確認のうえ、面接案内等のご対応をお願いいたします。</textarea>
+      <button class="primary" onclick="adminDoForwardApplication('${kind}','${id}')">この企業へ転送する</button>
+    `);
+  }catch(e){
+    alert('転送画面エラー：' + e.message);
+  }
+};
+
+/* 右下チャットアイコンへ未読数字を付ける */
+function v725EnsureChatBadgeStyle(){
+  if(document.getElementById('v725ChatBadgeStyle'))return;
+  const style=document.createElement('style');
+  style.id='v725ChatBadgeStyle';
+  style.textContent=`
+    .v725-chat-badge{
+      position:absolute;
+      right:-4px;
+      top:-6px;
+      min-width:20px;
+      height:20px;
+      padding:0 6px;
+      border-radius:999px;
+      background:#e11d48;
+      color:#fff;
+      font-size:12px;
+      line-height:20px;
+      font-weight:900;
+      text-align:center;
+      box-shadow:0 2px 8px rgba(0,0,0,.25);
+      z-index:9999;
+    }
+    .chat-float,.chat-float-btn,#chatFloat,#chatButton,#chatFab,.floating-chat{
+      position:fixed;
+    }
+  `;
+  document.head.appendChild(style);
+}
+function v725FindChatButton(){
+  return document.querySelector('.chat-float') ||
+         document.querySelector('.chat-float-btn') ||
+         document.getElementById('chatFloat') ||
+         document.getElementById('chatButton') ||
+         document.getElementById('chatFab') ||
+         document.querySelector('[onclick="openChat()"]') ||
+         document.querySelector('[onclick="studentChat()"]');
+}
+async function v725UnreadChatCount(){
+  try{
+    if(!currentProfile?.email)return 0;
+    const email=currentProfile.email;
+    const r=await sb.from('chat_messages')
+      .select('id')
+      .eq('user_email', email)
+      .neq('sender_role','student')
+      .eq('read_by_user', false);
+    if(r.error)return 0;
+    return (r.data||[]).length;
+  }catch(e){return 0}
+}
+async function refreshChatBadge(){
+  v725EnsureChatBadgeStyle();
+  const btn=v725FindChatButton();
+  if(!btn)return;
+
+  let old=btn.querySelector('.v725-chat-badge');
+  if(old)old.remove();
+
+  const count=await v725UnreadChatCount();
+  if(count>0){
+    if(getComputedStyle(btn).position==='static')btn.style.position='relative';
+    const badge=document.createElement('span');
+    badge.className='v725-chat-badge';
+    badge.textContent=count>99?'99+':String(count);
+    btn.appendChild(badge);
+  }
+}
+
+/* 学生がチャットを開いたら既読にする */
+async function v725MarkChatRead(){
+  try{
+    const email=currentProfile?.email;
+    if(!email)return;
+    await sb.from('chat_messages')
+      .update({read_by_user:true})
+      .eq('user_email', email)
+      .neq('sender_role','student');
+    setTimeout(refreshChatBadge,300);
+  }catch(e){}
+}
+
+/* 既存チャット関数を包む */
+try{
+  const oldStudentChatV725 = studentChat;
+  studentChat = async function(){
+    await v725MarkChatRead();
+    return await oldStudentChatV725();
+  };
+}catch(e){}
+try{
+  const oldOpenStudentChatV725 = openStudentChat;
+  openStudentChat = async function(){
+    await v725MarkChatRead();
+    return await oldOpenStudentChatV725();
+  };
+}catch(e){}
+try{
+  const oldOpenChatV725 = openChat;
+  openChat = async function(){
+    if(currentProfile?.role==='student')await v725MarkChatRead();
+    return await oldOpenChatV725();
+  };
+}catch(e){}
+
+/* 企业发消息后，补强学生端未读 */
+try{
+  const oldCompanySendStudentMessageV724 = companySendStudentMessageV724;
+  companySendStudentMessageV724 = async function(toEmail,toName){
+    await oldCompanySendStudentMessageV724(toEmail,toName);
+    setTimeout(refreshChatBadge,800);
+  };
+}catch(e){}
+
+/* 页面切换、登录后、定时刷新 */
+try{
+  const oldUpdateHeaderV725 = updateHeader;
+  updateHeader = async function(){
+    const r = await oldUpdateHeaderV725.apply(this, arguments);
+    setTimeout(refreshChatBadge,500);
+    return r;
+  };
+}catch(e){}
+
+try{
+  const oldStudentDashboardV725 = studentDashboard;
+  studentDashboard = async function(){
+    const r = await oldStudentDashboardV725.apply(this, arguments);
+    setTimeout(refreshChatBadge,500);
+    return r;
+  };
+}catch(e){}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  v725EnsureChatBadgeStyle();
+  setTimeout(refreshChatBadge,1200);
+  setInterval(refreshChatBadge,15000);
+});
+
+/* クリック時も既読化 */
+document.addEventListener('click',function(e){
+  const btn=e.target.closest?.('.chat-float,.chat-float-btn,#chatFloat,#chatButton,#chatFab,.floating-chat');
+  if(btn && currentProfile?.role==='student'){
+    v725MarkChatRead();
+  }
+},true);
 
 </script>
 </body>
