@@ -1953,6 +1953,36 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 let currentProfile=null,deferredInstallPrompt=null,selectedRole='student';
 let chatPollingTimer=null,adminChatPollingTimer=null,currentAdminChatUser=null;
 
+async function v70GetStudent() {
+    const email = currentProfile?.email || currentUser?.email || '';
+
+    if (!email) return null;
+
+    let r = await sb
+        .from('students')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+
+    if (r.data) return r.data;
+
+    let ins = await sb
+        .from('students')
+        .insert({
+            email: email,
+            name: currentProfile?.name || email,
+            active: true
+        })
+        .select('*')
+        .single();
+
+    if (ins.error) {
+        console.error(ins.error);
+        return null;
+    }
+
+    return ins.data;
+}
 function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id)?.classList.add('active')}
 function v(id){return(document.getElementById(id)?.value||'').trim()}
 function esc(x){return String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
