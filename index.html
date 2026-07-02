@@ -2685,6 +2685,26 @@ async function openNoticeDetail(id){
   modalContent.innerHTML=`<h2>${esc(n.title)}</h2><div class="summary" style="margin-bottom:10px">${esc(n.category||'案内')} / ${esc((n.created_at||'').slice(0,16).replace('T',' '))}</div><div style="white-space:pre-wrap;line-height:1.9">${esc(n.body||'')}</div>${n.attachment_url?`<div class="v54-attach"><a target="_blank" href="${esc(n.attachment_url)}">📎 添付ファイルをダウンロード</a></div>`:''}`;
   modal.classList.add('on');
 }
+
+async function showAllNotices(){
+  const r=await sb.from('site_notices').select('*').eq('active',true).order('created_at',{ascending:false});
+  if(r.error)return alert('お知らせ一覧の読込エラー：'+r.error.message);
+  const rows=r.data||[];
+  modalContent.innerHTML=`
+    <h2>お知らせ一覧</h2>
+    <div class="summary" style="margin-bottom:12px">公開中のお知らせを新しい順に表示しています。</div>
+    <div class="notice-all-list">
+      ${rows.map(x=>{
+        const catCls=x.category==='重要'?'hni-important':x.category==='案内'?'hni-info':'';
+        return `<div class="home-notice-item" onclick="openNoticeDetail('${x.id}')" style="cursor:pointer">
+          <div class="hni-cat ${catCls}">${esc(x.category||'案内')}${x.attachment_url?' 📎':''}</div>
+          <div class="hni-title">${esc(x.title)}</div>
+          <div class="hni-date">${esc((x.created_at||'').slice(0,10))}</div>
+        </div>`;
+      }).join('')||'<div class="home-job-empty">お知らせはありません</div>'}
+    </div>`;
+  modal.classList.add('on');
+}
 function noticeCard(n){
   const cls=n.read?'notice-card-read':'notice-card-unread';
   const readBtn=n.read?'<span class="summary" style="font-size:12px">✅ 既読</span>':`<button class="secondary" style="font-size:12px;padding:5px 10px" onclick="markNoticeRead('${n.id}')">既読にする</button>`;
@@ -2999,14 +3019,16 @@ async function loadHome(){
     homeNewJobs.innerHTML=(d.data||[]).slice(0,4).map(j=>jobCard(j,'dispatch')).join('')||'<div class="home-job-empty">現在募集中の求人はありません</div>';
     homePickupJobs.innerHTML=(c.data||[]).slice(0,4).map(j=>jobCard(j,'career')).join('')||'<div class="home-job-empty">現在募集中の求人はありません</div>';
     const n=await sb.from('site_notices').select('*').eq('active',true).order('created_at',{ascending:false}).limit(4);
-    homeNotices.innerHTML=(n.data||[]).map(x=>{
+    const noticeRows=n.data||[];
+    homeNotices.innerHTML=(noticeRows.map(x=>{
       const catCls=x.category==='重要'?'hni-important':x.category==='案内'?'hni-info':'';
       return `<div class="home-notice-item" onclick="openNoticeDetail('${x.id}')">
         <div class="hni-cat ${catCls}">${esc(x.category||'案内')}${x.attachment_url?' 📎':''}</div>
         <div class="hni-title">${esc(x.title)}</div>
         <div class="hni-date">${esc((x.created_at||'').slice(0,10))}</div>
       </div>`;
-    }).join('')||'<div class="home-job-empty">お知らせはありません</div>';
+    }).join('')||'<div class="home-job-empty">お知らせはありません</div>')+
+    `<div class="notice-more-link" onclick="showAllNotices()" style="padding:10px 14px;text-align:right;font-weight:800;color:var(--blue);cursor:pointer;border-top:1px solid #eef2f7">お知らせ一覧を見る →</div>`;
     const a=await sb.from('alumni_companies').select('*').eq('active',true).order('display_order',{ascending:true});
     renderAlumni(a.data||[]);
   }catch(e){console.warn(e);renderAlumni([])}
