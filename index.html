@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SOLA CAREER CENTER V7.3.2 Stable</title>
+<title>SOLA CAREER CENTER V7.3.3 Stable</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
 /* ===== V5.5.2 チャット返信・求人添付修正：最終上書き ===== */
 function v552RoleLabel(role){
@@ -1816,7 +1816,7 @@ button,
 @media(max-width:860px){.v72-form-grid{grid-template-columns:1fr}.v72-profile-card{flex-direction:column}}
 
 
-/* ===== SOLA CAREER CENTER V7.3.2 Stable ログイン導線改善 ===== */
+/* ===== SOLA CAREER CENTER V7.3.3 Stable ログイン導線改善 ===== */
 .v721-login-focus{outline:3px solid rgba(34,197,94,.35)!important;box-shadow:0 0 0 6px rgba(34,197,94,.12)!important;border-radius:18px!important}
 .v721-login-guide{background:#ecfdf5;border:1px solid #86efac;color:#166534;border-radius:14px;padding:10px 12px;margin:10px 0;font-weight:800;font-size:14px}
 
@@ -4741,7 +4741,7 @@ async function companySettings(){
 
 
 
-/* ===== SOLA CAREER CENTER V7.3.2 Stable：応募は管理者経由に統一 ===== */
+/* ===== SOLA CAREER CENTER V7.3.3 Stable：応募は管理者経由に統一 ===== */
 async function v722GetStudentSafe(){
   try{
     if(typeof v70GetStudent==='function'){
@@ -5903,45 +5903,54 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 
-/* ===== V7.3.2 Minimal Patch：求人票複数添付・募集人数未定・外国人未確認・誤操作防止 ===== */
+/* ===== V7.3.3 Stable Patch：求人関連ファイル複数添付・個別削除対応 ===== */
 (function(){
-  let v732Dirty = false;
+  let v733Dirty = false;
+  let v733SelectedFiles = [];
+  let v733ExistingFiles = [];
+
   document.addEventListener('input', function(e){
-    if(e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) v732Dirty = true;
+    if(e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) v733Dirty = true;
   }, true);
+
   document.addEventListener('change', function(e){
-    if(e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) v732Dirty = true;
+    if(e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) v733Dirty = true;
   }, true);
+
   window.addEventListener('beforeunload', function(e){
-    if(v732Dirty){
+    if(v733Dirty){
       e.preventDefault();
       e.returnValue = '入力内容が保存されていない可能性があります。';
     }
   });
-  window.v732MarkSaved = function(){ v732Dirty = false; };
 
-  function v732SafeName(s){
+  window.v733MarkSaved = function(){ v733Dirty = false; };
+
+  function v733SafeName(s){
     return String(s || 'file').replace(/[^a-zA-Z0-9._-]/g,'_');
   }
-  async function v732UploadFile(file, folder, base){
+
+  async function v733UploadFile(file, folder, base){
     if(!file) return '';
-    const path = folder + '/' + v732SafeName(base || 'jobfile') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '_' + v732SafeName(file.name);
+    const path = folder + '/' + v733SafeName(base || 'jobfile') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '_' + v733SafeName(file.name);
     const r = await sb.storage.from('photos').upload(path, file, {upsert:true});
     if(r.error) throw r.error;
     return sb.storage.from('photos').getPublicUrl(path).data.publicUrl;
   }
-  function v732ParseFiles(j){
+
+  function v733ParseFiles(j){
     try{
       const arr = JSON.parse(j.attachment_name || '[]');
       if(Array.isArray(arr) && arr.length) return arr;
     }catch(e){}
     const arr = [];
-    if(j.attachment_url) arr.push({name:j.attachment_name || '求人票', url:j.attachment_url});
+    if(j && j.attachment_url) arr.push({name:j.attachment_name || '求人票', url:j.attachment_url});
     return arr;
   }
-  window.v732JobLinks = function(j){
+
+  window.v733JobLinks = function(j){
     let h = '';
-    const files = v732ParseFiles(j || {});
+    const files = v733ParseFiles(j || {});
     files.forEach((f, i)=>{
       if(f && f.url) h += `<a target="_blank" href="${esc(f.url)}">📄 ${esc(f.name || ('求人関連ファイル' + (i+1)))}</a>`;
     });
@@ -5953,7 +5962,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     return h ? `<div class="v552-attach v561-attach v563-job-links">${h}</div>` : '';
   };
 
-  window.v732QuotaOptions = function(q){
+  window.v733QuotaOptions = function(q){
     const current = String(q ?? '1');
     const opts = [
       ['0','未定'],
@@ -5966,26 +5975,78 @@ document.addEventListener('DOMContentLoaded',()=>{
     ];
     return opts.map(([val, label]) => `<option value="${val}" ${current===val ? 'selected' : ''}>${label}</option>`).join('');
   };
-  window.v732ForeignOptions = function(v){
+
+  window.v733ForeignOptions = function(v){
     const current = String(v || '未確認');
     const opts = ['未確認','外国人歓迎','外国人応募可','要相談','日本人のみ'];
     return opts.map(x => `<option value="${esc(x)}" ${current===x ? 'selected' : ''}>${esc(x)}</option>`).join('');
   };
 
-  window.v732RefreshFileList = function(){
-    const input = document.getElementById('jobAttachmentFile');
-    const list = document.getElementById('v732JobFileList');
-    if(!input || !list) return;
-    const files = Array.from(input.files || []);
-    if(files.length > 5){
-      alert('添付できる求人関連ファイルは最大5件です。');
-      input.value = '';
-      list.innerHTML = '<span class="summary">未選択</span>';
+  window.v733RefreshFileList = function(){
+    const list = document.getElementById('v733JobFileList');
+    if(!list) return;
+
+    const total = v733ExistingFiles.length + v733SelectedFiles.length;
+    if(total === 0){
+      list.innerHTML = '<div class="summary">未選択</div>';
       return;
     }
-    list.innerHTML = files.length
-      ? files.map((f,i)=>`<div class="summary">📎 ${i+1}. ${esc(f.name)}（${Math.round(f.size/1024)}KB）</div>`).join('')
-      : '<span class="summary">未選択</span>';
+
+    let h = '';
+    v733ExistingFiles.forEach((f, i)=>{
+      h += `<div class="summary" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid #e5e7eb;">
+        <span>📎 登録済み：<a class="link" target="_blank" href="${esc(f.url)}">${esc(f.name || '求人関連ファイル')}</a></span>
+        <button type="button" class="red" style="padding:4px 8px;" onclick="v733RemoveExistingFile(${i})">削除</button>
+      </div>`;
+    });
+
+    v733SelectedFiles.forEach((f, i)=>{
+      h += `<div class="summary" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid #e5e7eb;">
+        <span>📎 追加予定：${esc(f.name)}（${Math.round(f.size/1024)}KB）</span>
+        <button type="button" class="red" style="padding:4px 8px;" onclick="v733RemoveSelectedFile(${i})">削除</button>
+      </div>`;
+    });
+
+    h += `<div style="margin-top:8px;"><button type="button" class="gray" onclick="v733ClearAllFiles()">添付ファイルを全部削除</button></div>`;
+    list.innerHTML = h;
+  };
+
+  window.v733HandleFileSelect = function(){
+    const input = document.getElementById('jobAttachmentFile');
+    if(!input) return;
+
+    const newFiles = Array.from(input.files || []);
+    const total = v733ExistingFiles.length + v733SelectedFiles.length + newFiles.length;
+
+    if(total > 5){
+      alert('添付できる求人関連ファイルは最大5件です。');
+      input.value = '';
+      return;
+    }
+
+    v733SelectedFiles = v733SelectedFiles.concat(newFiles);
+    input.value = '';
+    v733RefreshFileList();
+  };
+
+  window.v733RemoveSelectedFile = function(index){
+    v733SelectedFiles.splice(index, 1);
+    v733RefreshFileList();
+  };
+
+  window.v733RemoveExistingFile = function(index){
+    if(!confirm('この登録済みファイルを削除しますか？')) return;
+    v733ExistingFiles.splice(index, 1);
+    v733Dirty = true;
+    v733RefreshFileList();
+  };
+
+  window.v733ClearAllFiles = function(){
+    if(!confirm('添付ファイルをすべて削除しますか？')) return;
+    v733ExistingFiles = [];
+    v733SelectedFiles = [];
+    v733Dirty = true;
+    v733RefreshFileList();
   };
 
   window.adminJobForm = async function(kind='', id=''){
@@ -5994,9 +6055,12 @@ document.addEventListener('DOMContentLoaded',()=>{
       const r=await sb.from(kind==='career'?'career_jobs':'dispatch_jobs').select('*').eq('id',id).single();
       if(r.data) j = Object.assign(j, r.data);
     }
-    const existingFiles = v732ParseFiles(j);
+
+    v733SelectedFiles = [];
+    v733ExistingFiles = v733ParseFiles(j);
+
     adminContent.innerHTML=`<button class="gray" onclick="adminJobs()">← 戻る</button><h3>${id?'求人編集':'求人追加'}</h3>
-    <div class="alert info">V7.3.2：求人票（表・裏）、会社案内、職場写真など最大5件まで添付できます。</div>
+    <div class="alert info">V7.3.3：求人票（表・裏）、会社案内、職場写真など最大5件まで添付できます。アップロード後の個別削除にも対応しました。</div>
     <label>求人区分</label><select id="jobKind"><option value="dispatch">人材派遣</option><option value="career">就職支援</option></select>
     <label>企業名</label><input id="jobCompany" value="${esc(j.company||'')}">
     <label>職種</label><input id="jobType" value="${esc(j.job_type||'')}">
@@ -6005,58 +6069,50 @@ document.addEventListener('DOMContentLoaded',()=>{
     <label>勤務時間</label><input id="jobTime" value="${esc(j.work_time||'')}">
     <label>応募条件</label><textarea id="jobReq">${esc(j.requirements||'')}</textarea>
     <div class="v552-form-grid v561-form-grid v54-form-grid v55-form-grid">
-      <div><label>外国人応募</label><select id="jobForeign">${v732ForeignOptions(j.foreigner_ok)}</select><div class="summary">未入力の場合は「未確認」として保存します。</div></div>
+      <div><label>外国人応募</label><select id="jobForeign">${v733ForeignOptions(j.foreigner_ok)}</select><div class="summary">未入力の場合は「未確認」として保存します。</div></div>
       <div><label>日本語レベル</label><input id="jobJapanese" value="${esc(j.japanese_level||'')}"></div>
     </div>
     <div class="v552-form-grid v561-form-grid v54-form-grid v55-form-grid">
-      <div><label>募集人数</label><select id="jobQuota">${v732QuotaOptions(j.quota)}</select><div class="summary">人数が分からない場合は「未定」を選択してください。</div></div>
+      <div><label>募集人数</label><select id="jobQuota">${v733QuotaOptions(j.quota)}</select><div class="summary">人数が分からない場合は「未定」を選択してください。</div></div>
       <div><label>公開</label><select id="jobActive"><option value="true">公開</option><option value="false">非公開</option></select></div>
     </div>
     <h4 class="section-title">添付・URL（任意）</h4>
     <label>求人関連ファイル（最大5件：求人票 表・裏 / 会社案内 / 職場写真など）</label>
-    <input id="jobAttachmentFile" type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" onchange="v732RefreshFileList()">
-    <div id="v732JobFileList" class="summary">未選択</div>
-    <div class="summary">現在：${existingFiles.length ? existingFiles.map(f=>`<a class="link" target="_blank" href="${esc(f.url)}">${esc(f.name||'求人関連ファイル')}</a>`).join(' / ') : '未登録'}</div>
+    <input id="jobAttachmentFile" type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" onchange="v733HandleFileSelect()">
+    <div id="v733JobFileList" style="margin-top:8px;padding:8px;border:1px dashed #d1d5db;border-radius:8px;background:#f8fafc;"></div>
+    <div class="summary">複数選択する場合は、ファイル選択画面で Ctrl キーを押しながら選択してください。</div>
     <label>求人ポスター・チラシ画像</label><input id="jobPosterFile" type="file" accept="image/*,.pdf">
     <div class="summary">現在：${j.poster_url?`<a class="link" target="_blank" href="${esc(j.poster_url)}">${esc(j.poster_name||'ポスター')}</a>`:'未登録'}</div>
     <label>求人URL・企業ページURL</label><input id="jobExternalUrl" placeholder="https://..." value="${esc(j.external_url||'')}">
-    <input type="hidden" id="jobOldAttachmentUrl" value="${esc(j.attachment_url||'')}">
-    <input type="hidden" id="jobOldAttachmentName" value="${esc(j.attachment_name||'')}">
     <input type="hidden" id="jobOldPosterUrl" value="${esc(j.poster_url||'')}">
     <input type="hidden" id="jobOldPosterName" value="${esc(j.poster_name||'')}">
     <button onclick="saveAdminJob('${kind}','${id}')">${id?'更新する':'追加する'}</button>`;
     if(kind) jobKind.value=kind;
     if(String(j.active)==='false') jobActive.value='false';
+    v733RefreshFileList();
   };
 
   window.saveAdminJob = async function(oldKind='', id=''){
     try{
       const kind=v('jobKind'), tab=kind==='career'?'career_jobs':'dispatch_jobs';
       const q=Number(v('jobQuota') || 0);
-      const input=document.getElementById('jobAttachmentFile');
-      const selectedFiles=Array.from(input?.files || []);
-      if(selectedFiles.length > 5) return alert('添付できる求人関連ファイルは最大5件です。');
 
-      let existingFiles = [];
-      try{
-        const arr = JSON.parse(v('jobOldAttachmentName') || '[]');
-        if(Array.isArray(arr)) existingFiles = arr;
-      }catch(e){
-        if(v('jobOldAttachmentUrl')) existingFiles = [{name:v('jobOldAttachmentName') || '求人票', url:v('jobOldAttachmentUrl')}];
+      if(v733ExistingFiles.length + v733SelectedFiles.length > 5){
+        return alert('添付できる求人関連ファイルは最大5件です。');
       }
 
-      let files = existingFiles;
-      if(selectedFiles.length){
-        files = [];
-        for(const f of selectedFiles){
-          const url = await v732UploadFile(f, 'job-attachments', 'jobfile');
-          files.push({name:f.name, url:url, size:f.size});
-        }
+      const files = v733ExistingFiles.slice();
+      for(const f of v733SelectedFiles){
+        const url = await v733UploadFile(f, 'job-attachments', 'jobfile');
+        files.push({name:f.name, url:url, size:f.size});
       }
 
       const posterFile=document.getElementById('jobPosterFile')?.files?.[0];
       let poster_url=v('jobOldPosterUrl'), poster_name=v('jobOldPosterName');
-      if(posterFile){ poster_url=await v732UploadFile(posterFile,'job-posters','jobposter'); poster_name=posterFile.name; }
+      if(posterFile){
+        poster_url=await v733UploadFile(posterFile,'job-posters','jobposter');
+        poster_name=posterFile.name;
+      }
 
       const attachment_url = files[0]?.url || '';
       const attachment_name = files.length ? JSON.stringify(files) : '';
@@ -6080,27 +6136,35 @@ document.addEventListener('DOMContentLoaded',()=>{
         poster_name,
         external_url:v('jobExternalUrl')
       };
+
       let r;
-      if(id&&oldKind===kind) r=await sb.from(tab).update(p).eq('id',id);
-      else{
+      if(id&&oldKind===kind){
+        r=await sb.from(tab).update(p).eq('id',id);
+      }else{
         if(id&&oldKind) await sb.from(oldKind==='career'?'career_jobs':'dispatch_jobs').delete().eq('id',id);
         r=await sb.from(tab).insert(p);
       }
       if(r.error) throw r.error;
-      v732MarkSaved();
+
+      v733SelectedFiles = [];
+      v733ExistingFiles = files;
+      v733MarkSaved();
+
       alert('求人情報を保存しました。');
       adminJobs();
       if(typeof loadHome==='function') loadHome();
-    }catch(e){ alert('保存エラー：'+e.message); }
+    }catch(e){
+      alert('保存エラー：'+e.message);
+    }
   };
 
-  window.v552JobLinks = window.v732JobLinks;
-  window.v561JobLinks = window.v732JobLinks;
-  window.v562JobLinks = window.v732JobLinks;
-  window.v563JobLinks = window.v732JobLinks;
+  window.v552JobLinks = window.v733JobLinks;
+  window.v561JobLinks = window.v733JobLinks;
+  window.v562JobLinks = window.v733JobLinks;
+  window.v563JobLinks = window.v733JobLinks;
 
   window.adminJobCard = function(j,k){
-    return `<div class="job"><span class="link">${k==='career'?'就職':'派遣'}</span><h3>${esc(j.company)}</h3><p><b>${esc(j.job_type)}</b></p><p>${esc(j.work_place||'')} / ${esc(j.pay||'')} / ${esc(j.work_time||'')}</p><p>${esc(j.work_content||'')}</p>${v732JobLinks(j)}<div class="v561-toolbar"><button onclick="adminJobForm('${k}','${j.id}')">編集</button><button class="secondary" onclick="copyJob('${k}','${j.id}')">複製</button><button class="red" onclick="deleteJob('${k}','${j.id}')">削除</button></div></div>`;
+    return `<div class="job"><span class="link">${k==='career'?'就職':'派遣'}</span><h3>${esc(j.company)}</h3><p><b>${esc(j.job_type)}</b></p><p>${esc(j.work_place||'')} / ${esc(j.pay||'')} / ${esc(j.work_time||'')}</p><p>${esc(j.work_content||'')}</p>${v733JobLinks(j)}<div class="v561-toolbar"><button onclick="adminJobForm('${k}','${j.id}')">編集</button><button class="secondary" onclick="copyJob('${k}','${j.id}')">複製</button><button class="red" onclick="deleteJob('${k}','${j.id}')">削除</button></div></div>`;
   };
 
   window.openJobDetail = function(el){
@@ -6119,7 +6183,7 @@ document.addEventListener('DOMContentLoaded',()=>{
         <tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">外国人応募</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.foreigner_ok||'未確認')}</td></tr>
         ${j.japanese_level?`<tr><th style="background:#f8fafc;padding:9px 10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px">日本語レベル</th><td style="padding:9px 10px;border-bottom:1px solid #e5e7eb">${esc(j.japanese_level)}</td></tr>`:''}
       </table>
-      ${v732JobLinks(j)}
+      ${v733JobLinks(j)}
       ${applyBtn}`;
     modal.classList.add('on');
   };
