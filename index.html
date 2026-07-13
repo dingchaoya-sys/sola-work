@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SOLA CAREER CENTER V7.3.3 Stable</title>
+<title>SOLA CAREER CENTER V7.4 Password Request System</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
 /* ===== V5.5.2 チャット返信・求人添付修正：最終上書き ===== */
 function v552RoleLabel(role){
@@ -289,7 +289,19 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{v56AddPasswordM
 function v561Download(filename, content, type='text/plain;charset=utf-8'){const blob=new Blob([content],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url)}
 function v561CsvCell(v){return `"${String(v??'').replace(/"/g,'""')}"`}
 function v561RowsToCsv(headers,rows){return '\ufeff'+[headers.map(v561CsvCell).join(','),...rows.map(r=>headers.map(h=>v561CsvCell(r[h])).join(','))].join('\n')}
-function v561RowsToExcel(filename,title,headers,rows){const body='<html><head><meta charset="UTF-8"></head><body><h2>'+esc(title)+'</h2><table border="1"><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+headers.map(h=>'<td>'+esc(r[h]??'')+'</td>').join('')+'</tr>').join('')+'</table></body></html>';v561Download(filename,body,'application/vnd.ms-excel;charset=utf-8')}
+function v561RowsToExcel(filename,title,headers,rows){const body='<html><head><meta charset="UTF-8">
+<style>
+/* V7.4 Password Request System */
+.v74-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}
+.v74-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:12px;margin:12px 0}
+.v74-request-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.v74-status{display:inline-block;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:900}
+.v74-status-pending{background:#f3e8ff;color:#7e22ce}.v74-status-completed{background:#dcfce7;color:#166534}.v74-status-rejected{background:#fee2e2;color:#991b1b}
+#passwordRequestAdminBtn .notify-badge{position:static;margin-left:4px;display:inline-flex;min-width:20px;height:20px;align-items:center;justify-content:center}
+@media(max-width:700px){.v74-summary-grid{grid-template-columns:1fr}.v74-request-head{align-items:flex-start}}
+</style>
+
+</head><body><h2>'+esc(title)+'</h2><table border="1"><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+headers.map(h=>'<td>'+esc(r[h]??'')+'</td>').join('')+'</tr>').join('')+'</table></body></html>';v561Download(filename,body,'application/vnd.ms-excel;charset=utf-8')}
 async function v561UploadOptional(inputId,folder,baseName){const el=document.getElementById(inputId);if(!el?.files?.[0])return '';return await upload(inputId,folder,baseName||'file')}
 function v561JobLinks(j){let h='';if(j.attachment_url)h+=`<a target="_blank" href="${esc(j.attachment_url)}">📄 求人票</a>`;if(j.poster_url)h+=`<a target="_blank" href="${esc(j.poster_url)}">🖼️ ポスター/チラシ</a>`;if(j.external_url)h+=`<a target="_blank" href="${esc(j.external_url)}">🌐 求人URL</a>`;return h?`<div class="v561-attach">${h}</div>`:''}
 
@@ -6187,6 +6199,202 @@ document.addEventListener('DOMContentLoaded',()=>{
       ${applyBtn}`;
     modal.classList.add('on');
   };
+})();
+
+
+
+/* ===== V7.4 Password Request System ===== */
+(function(){
+  const V74_TABLE='password_reset_requests';
+  const oldShowAuth=window.showAuth;
+  const oldAdminDashboard=window.adminDashboard;
+
+  function roleLabel(role){return role==='student'?'学生':role==='company'?'企業':role==='admin'?'管理者':'不明';}
+  function statusLabel(status){return status==='completed'?'処理済み':status==='rejected'?'却下':'未処理';}
+  function statusClass(status){return status==='completed'?'pw-request-approved':status==='rejected'?'pw-request-rejected':'pw-request-card';}
+  function fmtDate(v){return String(v||'').slice(0,16).replace('T',' ');}
+  function safe(v){return typeof esc==='function'?esc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+  window.showAuth=function(mode){
+    if(mode!=='reset') return oldShowAuth(mode);
+    const r=selectedRole, rn=roleName(r);
+    authPanel.innerHTML=`
+      <h3>${safe(rn)} パスワード再設定申請</h3>
+      <div id="authMsg"></div>
+      <div class="tabs">
+        <button onclick="showAuth('login')">ログイン</button>
+        ${r!=='admin'?`<button onclick="showAuth('register')">${r==='company'?'企業登録申請':'新規登録'}</button>`:''}
+        <button class="primary" onclick="showAuth('reset')">パスワード再設定</button>
+      </div>
+      <div class="mini-card pw-request-card">
+        <b>管理者へ再設定を申請します</b>
+        <p class="summary">申請後、管理者が内容を確認して新しいパスワードを設定します。学校からの連絡をお待ちください。</p>
+      </div>
+      <label>${r==='company'?'会社名・担当者名':'氏名'} <span style="color:#dc2626">*</span></label>
+      <input id="resetRequestName" placeholder="${r==='company'?'会社名または担当者名':'氏名を入力'}">
+      <label>登録メールアドレス <span style="color:#dc2626">*</span></label>
+      <input id="resetRequestEmail" type="email" placeholder="登録時のメールアドレス">
+      <label>${r==='student'?'学籍番号':'確認情報'}（任意）</label>
+      <input id="resetRequestIdentifier" placeholder="${r==='student'?'学籍番号':'電話番号・担当者名など'}">
+      <label>備考（任意）</label>
+      <textarea id="resetRequestNote" placeholder="連絡可能な時間帯など"></textarea>
+      <button id="resetRequestSubmitBtn" onclick="submitPasswordResetRequest()">管理者へ申請する</button>
+      <div class="alert info">同じ内容を何度も送信しないでください。未処理の申請がある場合は、その申請が継続されます。</div>`;
+    authPanel.style.display='block';
+  };
+
+  window.submitPasswordResetRequest=async function(){
+    const name=(document.getElementById('resetRequestName')?.value||'').trim();
+    const email=(document.getElementById('resetRequestEmail')?.value||'').trim().toLowerCase();
+    const identifier=(document.getElementById('resetRequestIdentifier')?.value||'').trim();
+    const note=(document.getElementById('resetRequestNote')?.value||'').trim();
+    if(!name)return alert('氏名または会社名を入力してください。');
+    if(!email||!/^\S+@\S+\.\S+$/.test(email))return alert('正しいメールアドレスを入力してください。');
+    const btn=document.getElementById('resetRequestSubmitBtn');
+    if(btn){btn.disabled=true;btn.textContent='申請中...';}
+    try{
+      const existing=await sb.from(V74_TABLE).select('id,status').eq('email',email).eq('status','pending').limit(1);
+      if(existing.error)throw existing.error;
+      if((existing.data||[]).length){
+        alert('このメールアドレスの未処理申請はすでに登録されています。管理者の対応をお待ちください。');
+        return;
+      }
+      const payload={name,email,role:selectedRole||'student',identifier,note,status:'pending',read_by_admin:false};
+      const r=await sb.from(V74_TABLE).insert(payload);
+      if(r.error)throw r.error;
+      authPanel.innerHTML=`<h3>申請を受け付けました</h3><div class="alert ok"><b>パスワード再設定申請を管理者へ送信しました。</b><br>管理者の確認後、学校から案内があります。</div><button onclick="showAuth('login')">ログイン画面へ戻る</button>`;
+    }catch(e){
+      alert('申請エラー：'+e.message+'\n\n管理者に「V7.4用SQL設定」が完了しているか確認してください。');
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent='管理者へ申請する';}
+    }
+  };
+
+  async function pendingCount(){
+    try{const r=await sb.from(V74_TABLE).select('id',{count:'exact',head:true}).eq('status','pending');return r.error?0:(r.count||0);}catch(e){return 0;}
+  }
+
+  window.v74RefreshPasswordBadge=async function(){
+    if(!currentProfile||currentProfile.role!=='admin')return;
+    const count=await pendingCount();
+    const btn=document.getElementById('passwordRequestAdminBtn');
+    if(btn)btn.innerHTML='パスワード再設定申請'+(count?` <span class="notify-badge" style="background:#9333ea">${count}</span>`:'');
+  };
+
+  function addAdminMenu(){
+    const tabs=document.querySelector('#adminPage .tabs');
+    if(!tabs)return;
+    let btn=document.getElementById('passwordRequestAdminBtn');
+    if(!btn){
+      btn=document.createElement('button');
+      btn.id='passwordRequestAdminBtn';
+      btn.onclick=adminPasswordRequests;
+      const settings=[...tabs.querySelectorAll('button')].find(b=>(b.textContent||'').includes('設定'));
+      if(settings)tabs.insertBefore(btn,settings);else tabs.appendChild(btn);
+    }
+    v74RefreshPasswordBadge();
+  }
+
+  window.adminDashboard=async function(){
+    await oldAdminDashboard();
+    addAdminMenu();
+  };
+
+  window.adminPasswordRequests=async function(filter='all'){
+    adminContent.innerHTML='<button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button><h3>パスワード再設定申請</h3><div class="alert info">申請内容を確認し、「一件処理」で新しいパスワードを設定できます。</div><p>読込中...</p>';
+    let q=sb.from(V74_TABLE).select('*').order('created_at',{ascending:false});
+    if(filter!=='all')q=q.eq('status',filter);
+    const r=await q;
+    if(r.error){adminContent.innerHTML+=`<div class="alert err">読込エラー：${safe(r.error.message)}</div>`;return;}
+    await sb.from(V74_TABLE).update({read_by_admin:true}).eq('read_by_admin',false);
+    const rows=r.data||[];
+    const pending=rows.filter(x=>x.status==='pending').length;
+    adminContent.innerHTML=`
+      <button class="gray" onclick="adminDashboard()">← 管理者マイページへ戻る</button>
+      <h3>パスワード再設定申請</h3>
+      <div class="v74-summary-grid">
+        <div class="stat"><b>${pending}</b><span>表示中の未処理</span></div>
+        <div class="stat"><b>${rows.length}</b><span>表示件数</span></div>
+      </div>
+      <div class="v74-toolbar">
+        <button class="${filter==='all'?'primary':'secondary'}" onclick="adminPasswordRequests('all')">すべて</button>
+        <button class="${filter==='pending'?'primary':'secondary'}" onclick="adminPasswordRequests('pending')">未処理</button>
+        <button class="${filter==='completed'?'primary':'secondary'}" onclick="adminPasswordRequests('completed')">処理済み</button>
+        <button class="${filter==='rejected'?'primary':'secondary'}" onclick="adminPasswordRequests('rejected')">却下</button>
+      </div>
+      <div>${rows.length?rows.map(x=>`
+        <div class="mini-card ${statusClass(x.status)}">
+          <div class="v74-request-head"><div><b>${safe(x.name||'名称未入力')}</b> <span class="link">${roleLabel(x.role)}</span></div><span class="v74-status v74-status-${safe(x.status)}">${statusLabel(x.status)}</span></div>
+          <p><b>メール：</b>${safe(x.email)}</p>
+          ${x.identifier?`<p><b>確認情報：</b>${safe(x.identifier)}</p>`:''}
+          ${x.note?`<p><b>備考：</b>${safe(x.note)}</p>`:''}
+          <p class="summary">申請日時：${safe(fmtDate(x.created_at))}${x.processed_at?` / 処理日時：${safe(fmtDate(x.processed_at))}`:''}</p>
+          ${x.admin_note?`<div class="alert info">管理メモ：${safe(x.admin_note)}</div>`:''}
+          <div class="v74-toolbar">
+            ${x.status==='pending'?`<button onclick="openPasswordRequestProcess('${x.id}')">一件処理・パスワード変更</button><button class="secondary" onclick="rejectPasswordRequest('${x.id}')">却下</button>`:`<button class="secondary" onclick="reopenPasswordRequest('${x.id}')">未処理に戻す</button>`}
+            <button class="red" onclick="deletePasswordRequest('${x.id}')">削除</button>
+          </div>
+        </div>`).join(''):'<div class="alert info">該当する申請はありません。</div>'}</div>`;
+    v74RefreshPasswordBadge();
+  };
+
+  window.openPasswordRequestProcess=async function(id){
+    const r=await sb.from(V74_TABLE).select('*').eq('id',id).single();
+    if(r.error)return alert('読込エラー：'+r.error.message);
+    const x=r.data;
+    adminContent.innerHTML=`
+      <button class="gray" onclick="adminPasswordRequests('pending')">← 申請一覧へ戻る</button>
+      <h3>パスワード再設定処理</h3>
+      <div class="mini-card pw-request-card"><b>${safe(x.name)}</b> / ${roleLabel(x.role)}<p>${safe(x.email)}</p>${x.identifier?`<p>確認情報：${safe(x.identifier)}</p>`:''}</div>
+      <label>新しいパスワード</label><input id="v74NewPassword1" type="password" placeholder="英字・数字8文字以上">
+      <label>確認用パスワード</label><input id="v74NewPassword2" type="password" placeholder="もう一度入力">
+      <label>管理メモ（任意）</label><textarea id="v74AdminNote" placeholder="本人へ電話連絡済み、初期パスワードを案内済み等"></textarea>
+      <button onclick="completePasswordRequest('${safe(x.id)}','${safe(x.email)}')">パスワードを変更して処理済みにする</button>
+      <div class="alert info">変更後は、本人へ新しいパスワードを安全な方法で個別に案内してください。</div>`;
+  };
+
+  window.completePasswordRequest=async function(id,email){
+    const p1=(document.getElementById('v74NewPassword1')?.value||'').trim();
+    const p2=(document.getElementById('v74NewPassword2')?.value||'').trim();
+    const note=(document.getElementById('v74AdminNote')?.value||'').trim();
+    if(typeof okpass==='function'&&!okpass(p1))return alert('パスワードは英字・数字8文字以上で入力してください。');
+    if(p1!==p2)return alert('確認用パスワードが一致しません。');
+    if(!confirm(email+' のパスワードを変更しますか？'))return;
+    try{
+      const session=await sb.auth.getSession();
+      const token=session.data?.session?.access_token||'';
+      const res=await fetch(SUPABASE_URL+'/functions/v1/admin-set-password',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({email,new_password:p1})});
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok)throw new Error(data.error||'パスワード変更に失敗しました。');
+      const u=await sb.from(V74_TABLE).update({status:'completed',processed_at:new Date().toISOString(),processed_by:currentProfile?.email||'',admin_note:note,read_by_admin:true}).eq('id',id);
+      if(u.error)throw u.error;
+      alert('パスワードを変更し、申請を処理済みにしました。');
+      adminPasswordRequests('pending');
+    }catch(e){alert('処理エラー：'+e.message);}
+  };
+
+  window.rejectPasswordRequest=async function(id){
+    const note=prompt('却下理由または管理メモを入力してください（任意）','');
+    if(note===null)return;
+    const r=await sb.from(V74_TABLE).update({status:'rejected',processed_at:new Date().toISOString(),processed_by:currentProfile?.email||'',admin_note:note,read_by_admin:true}).eq('id',id);
+    if(r.error)return alert('更新エラー：'+r.error.message);
+    adminPasswordRequests('pending');
+  };
+  window.reopenPasswordRequest=async function(id){
+    if(!confirm('この申請を未処理に戻しますか？'))return;
+    const r=await sb.from(V74_TABLE).update({status:'pending',processed_at:null,processed_by:null,read_by_admin:false}).eq('id',id);
+    if(r.error)return alert('更新エラー：'+r.error.message);
+    adminPasswordRequests('all');
+  };
+  window.deletePasswordRequest=async function(id){
+    if(!confirm('この申請記録を削除しますか？'))return;
+    const r=await sb.from(V74_TABLE).delete().eq('id',id);
+    if(r.error)return alert('削除エラー：'+r.error.message);
+    adminPasswordRequests('all');
+  };
+
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(addAdminMenu,1200));
+  setInterval(()=>{try{v74RefreshPasswordBadge();}catch(e){}},60000);
 })();
 
 </script>
